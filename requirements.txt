@@ -1,0 +1,5 @@
+# YouTube → Podcast dependencies
+youtube-transcript-api>=1.0.0   # Fetches YouTube captions without the Data API
+openai>=1.30.0                  # GPT-4o summarisation + TTS audio generation
+
+# No ffmpeg or pydub required — audio segments are concatenated as raw MP3 bytes.
