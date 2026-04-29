@@ -148,13 +148,14 @@ def fetch_transcript(
 # AI content generation
 # ---------------------------------------------------------------------------
 
-SUMMARY_SYSTEM = (
+# Hardcoded fallback prompts — used when no prompt file is found on disk.
+_DEFAULT_SUMMARY_PROMPT = (
     "You are an expert content summarizer. "
     "Create a clear, well-structured markdown document summarizing a YouTube video transcript. "
     "Include: a brief overview, major sections/topics covered, key takeaways, and any notable quotes."
 )
 
-DIALOGUE_SYSTEM = """\
+_DEFAULT_DIALOGUE_PROMPT = """\
 You are a podcast script writer. Write an engaging two-host podcast episode based on a YouTube transcript.
 
 Hosts:
@@ -173,7 +174,7 @@ Guidelines:
 - Close with both hosts summarising the takeaways and signing off.
 """
 
-MONOLOGUE_SYSTEM = """\
+_DEFAULT_MONOLOGUE_PROMPT = """\
 You are a podcast script writer. Write an engaging solo-host podcast episode based on a YouTube transcript.
 
 The host is ALEX: knowledgeable and conversational — explains ideas clearly, shares opinions, and keeps the listener hooked.
@@ -189,9 +190,58 @@ Guidelines:
 - Close with a summary of key takeaways and a sign-off.
 """
 
+# Default prompt file locations, relative to this script.
+_SCRIPT_DIR = Path(__file__).parent
+_DEFAULT_PROMPT_FILES = {
+    "summary":   _SCRIPT_DIR / "prompts" / "summary.txt",
+    "dialogue":  _SCRIPT_DIR / "prompts" / "dialogue.txt",
+    "monologue": _SCRIPT_DIR / "prompts" / "monologue.txt",
+}
+_DEFAULT_PROMPT_STRINGS = {
+    "summary":   _DEFAULT_SUMMARY_PROMPT,
+    "dialogue":  _DEFAULT_DIALOGUE_PROMPT,
+    "monologue": _DEFAULT_MONOLOGUE_PROMPT,
+}
+
+
+def load_prompt(name: str, override_path: str | None = None) -> str:
+    """Load a prompt string, with the following priority:
+
+    1. The file at ``override_path`` (if provided via CLI flag).
+    2. The default file in the ``prompts/`` folder next to this script.
+    3. The hardcoded fallback string embedded in this file.
+
+    This means the script always works out of the box, while users can
+    customise any prompt just by editing a text file.
+    """
+    candidates: list[Path] = []
+    if override_path:
+        candidates.append(Path(override_path))
+    candidates.append(_DEFAULT_PROMPT_FILES[name])
+
+    for path in candidates:
+        if path.exists():
+            text = path.read_text(encoding="utf-8").strip()
+            if text:
+                source = f"file: {path}"
+                if override_path and path == Path(override_path):
+                    source = f"custom file: {path}"
+                print(f"   Loaded {name} prompt from {source}")
+                return text
+            print(f"   Warning: {path} is empty — falling back to built-in {name} prompt.")
+
+    return _DEFAULT_PROMPT_STRINGS[name]
+
 
 def generate_content(
-    client, transcript: str, url: str, model: str = "gpt-4o", hosts: int = 2
+    client,
+    transcript: str,
+    url: str,
+    model: str = "gpt-4o",
+    hosts: int = 2,
+    summary_prompt: str = _DEFAULT_SUMMARY_PROMPT,
+    dialogue_prompt: str = _DEFAULT_DIALOGUE_PROMPT,
+    monologue_prompt: str = _DEFAULT_MONOLOGUE_PROMPT,
 ) -> tuple[str, list[tuple[str, str]]]:
     """Use the provided OpenAI-compatible client to produce:
       1. A markdown summary string.
@@ -199,7 +249,8 @@ def generate_content(
 
     hosts=1 produces a solo monologue (speaker is always "HOST").
     hosts=2 produces a two-host dialogue (speakers are "ALEX" and "JORDAN").
-    Works with any provider whose client was built with the right base_url/api_key.
+    The three *_prompt arguments accept the system prompt strings to use for
+    each LLM call, loaded externally via load_prompt().
     """
     # Truncate very long transcripts so we stay within context limits
     MAX_CHARS = 14_000
@@ -211,7 +262,7 @@ def generate_content(
     summary_resp = client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": SUMMARY_SYSTEM},
+            {"role": "system", "content": summary_prompt},
             {
                 "role": "user",
                 "content": (
@@ -223,13 +274,13 @@ def generate_content(
     )
     markdown = summary_resp.choices[0].message.content.strip()
 
-    script_system = MONOLOGUE_SYSTEM if hosts == 1 else DIALOGUE_SYSTEM
+    script_prompt = monologue_prompt if hosts == 1 else dialogue_prompt
     host_label = "solo monologue" if hosts == 1 else "two-host dialogue"
     print(f"   Generating {host_label} script  (model: {model})…")
     script_resp = client.chat.completions.create(
         model=model,
         messages=[
-            {"role": "system", "content": script_system},
+            {"role": "system", "content": script_prompt},
             {
                 "role": "user",
                 "content": (
@@ -488,6 +539,32 @@ def main() -> None:
         ),
     )
 
+    # ---- Prompt customisation flags ----
+    prompt_group = parser.add_argument_group(
+        "Prompt customisation",
+        "Override the system prompts sent to the LLM. Each flag accepts a path to a plain "
+        "text file. If omitted, podslacker looks for the file in the prompts/ folder next "
+        "to the script, then falls back to the built-in defaults.",
+    )
+    prompt_group.add_argument(
+        "--summary-prompt",
+        metavar="FILE",
+        default=None,
+        help="System prompt for the markdown summary step (default: prompts/summary.txt)",
+    )
+    prompt_group.add_argument(
+        "--dialogue-prompt",
+        metavar="FILE",
+        default=None,
+        help="System prompt for the two-host dialogue step (default: prompts/dialogue.txt)",
+    )
+    prompt_group.add_argument(
+        "--monologue-prompt",
+        metavar="FILE",
+        default=None,
+        help="System prompt for the solo monologue step (default: prompts/monologue.txt)",
+    )
+
     # ---- LLM provider flags ----
     llm_group = parser.add_argument_group("LLM provider (summarisation & dialogue)")
     llm_group.add_argument(
@@ -607,9 +684,17 @@ def main() -> None:
         llm_label = args.llm_base_url or "OpenAI"
         host_label = "solo" if args.hosts == 1 else "two-host"
         print(f"\n🤖  Generating {host_label} podcast script  [{llm_label} / {args.llm_model}]…")
+        summary_prompt   = load_prompt("summary",   args.summary_prompt)
+        dialogue_prompt  = load_prompt("dialogue",  args.dialogue_prompt)
+        monologue_prompt = load_prompt("monologue", args.monologue_prompt)
         try:
             markdown_summary, dialogue_segments = generate_content(
-                llm_client, transcript, args.url, model=args.llm_model, hosts=args.hosts
+                llm_client, transcript, args.url,
+                model=args.llm_model,
+                hosts=args.hosts,
+                summary_prompt=summary_prompt,
+                dialogue_prompt=dialogue_prompt,
+                monologue_prompt=monologue_prompt,
             )
             print(f"   ✓ Summary: {len(markdown_summary):,} characters")
             print(f"   ✓ Dialogue: {len(dialogue_segments)} segments")

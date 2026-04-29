@@ -114,6 +114,16 @@ podslacker uses the OpenAI chat completions API for summarisation and script gen
 | Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
 | Together AI | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
 
+### Prompt customisation options
+
+These flags let you swap out the system prompts sent to the LLM without editing the script. Each accepts a path to a plain text file. See [Customising Prompts](#customising-prompts) for the full priority rules and editing guidance.
+
+| Flag | Default | Description |
+|---|---|---|
+| `--summary-prompt FILE` | `prompts/summary.txt` | System prompt for the markdown summary LLM call. |
+| `--dialogue-prompt FILE` | `prompts/dialogue.txt` | System prompt for the two-host dialogue LLM call (used when `--hosts 2`). |
+| `--monologue-prompt FILE` | `prompts/monologue.txt` | System prompt for the solo monologue LLM call (used when `--hosts 1`). |
+
 ### TTS provider options
 
 Audio is always generated via OpenAI's TTS endpoint. These flags control which model and voices are used.
@@ -174,6 +184,65 @@ python podslacker.py https://youtu.be/VIDEO_ID \
   --llm-model llama3.2 \
   --llm-api-key-env OPENAI_API_KEY
 ```
+
+**Use a custom dialogue prompt for a different show format:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --dialogue-prompt ~/my_prompts/debate_format.txt
+```
+
+**Override all three prompts at once:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --summary-prompt ~/prompts/brief_summary.txt \
+  --dialogue-prompt ~/prompts/comedy_duo.txt \
+  --monologue-prompt ~/prompts/news_anchor.txt
+```
+
+---
+
+## Customising Prompts
+
+The LLM calls that generate the markdown summary and the podcast script are driven by system prompts stored as plain text files. You can edit these freely without touching the Python code.
+
+### Prompt files
+
+The `prompts/` folder next to `podslacker.py` contains the three default prompt files:
+
+| File | Used for |
+|---|---|
+| `prompts/summary.txt` | The markdown summary (both `--hosts` modes) |
+| `prompts/dialogue.txt` | The two-host conversation (`--hosts 2`) |
+| `prompts/monologue.txt` | The solo narration (`--hosts 1`) |
+
+Edit any of these files to change the LLM's behaviour for every future run.
+
+### Priority order
+
+Each prompt is resolved using the following priority, from highest to lowest:
+
+1. **CLI flag** — `--summary-prompt FILE`, `--dialogue-prompt FILE`, or `--monologue-prompt FILE`. If provided, this file is always used.
+2. **Default prompt file** — the corresponding file in `prompts/` next to the script, if it exists and is non-empty.
+3. **Built-in fallback** — the prompt string hardcoded inside `podslacker.py`, used automatically if both the CLI flag and the default file are absent or empty.
+
+This means the script always works out of the box, even if the `prompts/` folder is missing.
+
+### Tips for writing prompts
+
+The dialogue prompt must produce lines in exactly this format for the parser to recognise them:
+
+```
+[ALEX]: <text>
+[JORDAN]: <text>
+```
+
+The monologue prompt must produce lines in this format:
+
+```
+[HOST]: <text>
+```
+
+You can rename the hosts, change their personalities, adjust the number of exchanges, switch to a different language, or change the tone entirely — as long as the output lines start with the correct speaker tag. The summary prompt has no format constraints and can be customised freely.
 
 ---
 
@@ -266,15 +335,17 @@ Uses `youtube-transcript-api` to download the video's auto-generated or manually
 
 Makes two separate chat completion calls:
 
-**Call 1 — Markdown summary.** The transcript (truncated to 14,000 characters if needed) is sent to the LLM with a system prompt instructing it to produce a structured markdown document covering an overview, major topics, key takeaways, and notable quotes.
+**Call 1 — Markdown summary.** The transcript (truncated to 14,000 characters if needed) is sent to the LLM using the summary system prompt, which instructs it to produce a structured markdown document covering an overview, major topics, key takeaways, and notable quotes.
 
-**Call 2 — Podcast script.** The same transcript excerpt is sent again with a different system prompt:
-- In `--hosts 2` mode (`DIALOGUE_SYSTEM`), the LLM writes a back-and-forth conversation between two named hosts — Alex (analytical, detail-oriented) and Jordan (curious, big-picture) — formatted as `[ALEX]: ...` and `[JORDAN]: ...` lines.
-- In `--hosts 1` mode (`MONOLOGUE_SYSTEM`), the LLM writes a flowing solo narration formatted as `[HOST]: ...` paragraphs.
+**Call 2 — Podcast script.** The same transcript excerpt is sent again using a script system prompt chosen based on `--hosts`:
+- In `--hosts 2` mode, the dialogue prompt instructs the LLM to write a back-and-forth conversation between two named hosts — Alex (analytical, detail-oriented) and Jordan (curious, big-picture) — formatted as `[ALEX]: ...` and `[JORDAN]: ...` lines.
+- In `--hosts 1` mode, the monologue prompt instructs the LLM to write a flowing solo narration formatted as `[HOST]: ...` paragraphs.
 
 The raw LLM output is then parsed line-by-line into a list of `(speaker, text)` tuples for the TTS stage.
 
 The LLM client is built from the `openai` Python library with a configurable `base_url` and `api_key`, making it compatible with any OpenAI-compatible provider (OpenRouter, Ollama, Groq, etc.).
+
+**Prompt loading (`load_prompt`).** Before each run, the three system prompts are resolved by `load_prompt()` using a three-level priority chain: a CLI-supplied file (e.g. `--dialogue-prompt`) takes precedence, followed by the corresponding file in the `prompts/` folder next to the script, followed by the hardcoded fallback string embedded in `podslacker.py`. This ensures the script always works out of the box while making every prompt trivially editable.
 
 ### Stage 3 — Markdown output (`build_markdown`)
 
@@ -291,3 +362,5 @@ Each `(speaker, text)` segment is sent to OpenAI's `/audio/speech` endpoint one 
 **Env-var key references.** API keys are never passed as command-line arguments. Instead, flags like `--llm-api-key-env` accept the *name* of an environment variable, keeping secrets out of shell history and process listings.
 
 **No ffmpeg dependency.** MP3 is a frame-based format, so segments can be concatenated as raw bytes and the result plays back correctly in all standard media players. Silent frames are generated from a known-good MP3 frame header rather than by encoding silence, removing the need for any audio processing library.
+
+**Externalised prompts with graceful fallback.** The system prompts that drive the LLM are stored as plain text files in a `prompts/` folder, making them editable without touching Python code. A three-level priority chain (CLI flag → default file → hardcoded string) means the script degrades gracefully: it works even if the `prompts/` folder is deleted, and a single flag is enough to swap in a completely different prompt for a one-off run.
