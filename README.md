@@ -8,7 +8,7 @@ Turn any YouTube video into a podcast. podslacker fetches a video's transcript, 
 
 ```bash
 # 1. Install dependencies
-pip install youtube-transcript-api openai
+pip install -r requirements.txt
 
 # 2. Set your OpenAI API key
 export OPENAI_API_KEY=sk-...
@@ -34,7 +34,7 @@ Python 3.10 or later is required (the script uses `X | Y` union type hints).
 Install with pip:
 
 ```bash
-pip install youtube-transcript-api openai
+pip install pip install -r requirements.txt
 ```
 
 | Package | Version | Purpose |
