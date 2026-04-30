@@ -1,46 +1,291 @@
-# PodSlacker
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PodSlacker — Not every hour-long video deserves an hour.</title>
+  <meta name="description" content="Point PodSlacker at any YouTube video and get a summary, a listenable podcast, key moment screenshots, and a full transcript — without sitting through the whole thing first." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-### Not every hour-long video deserves an hour.
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #161921;
+      --border:    #252932;
+      --accent:    #6c63ff;
+      --accent2:   #a78bfa;
+      --text:      #e8eaf0;
+      --muted:     #8b92a8;
+      --card-bg:   #1a1d27;
+    }
 
-There's more worthwhile content on YouTube than any person could reasonably watch. Tutorials, conference talks, interviews, deep dives, documentary essays — it keeps coming, and the watch list keeps growing. The problem isn't finding content. It's figuring out *which* content is actually worth your time before you've committed forty-five minutes to find out.
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
 
-PodSlacker is for people who take their content seriously but their time even more so. Point it at any YouTube video and it does the legwork: a written summary that tells you what's actually in the video, a listenable podcast you can take with you, visual snapshots of the key moments, and a full transcript when you want to go deeper. Everything you need to make a smart call — watch, skip, or save for later — without sitting through the whole thing first.
+    /* ── HERO ── */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 100px 24px 80px;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, #2d235a 0%, transparent 70%);
+      border-bottom: 1px solid var(--border);
+    }
 
-Then, only if it earns your full attention, you watch.
+    .wordmark {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 16px;
+    }
 
----
+    .tagline {
+      font-size: 1.25rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-bottom: 32px;
+    }
 
-## What you get
+    .hero-body {
+      max-width: 660px;
+      font-size: 1.1rem;
+      color: #bcc0d0;
+      margin-bottom: 20px;
+    }
 
-**A summary worth reading.**
-A structured breakdown of the video's main ideas, key arguments, and takeaways — clear enough to have an informed opinion in two minutes rather than forty. Not a transcript dump. An actual summary.
+    .hero-body + .hero-body {
+      margin-top: 16px;
+    }
 
-**A podcast, ready when you are.**
-If the summary catches your interest but you're not in front of a screen, PodSlacker generates a conversational audio version of the content. Two hosts discuss the material naturally, or a single narrator walks you through it — your choice. Listen during your commute, your workout, or while you're making dinner. The content comes with you.
+    .cta-row {
+      margin-top: 48px;
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
 
-**Key moment screenshots.**
-Visual snapshots from the most significant points in the video give you a feel for what you'd actually be watching: the slides, the diagrams, the demonstrations. Useful for quickly gauging whether a technical tutorial is pitched at the right level, or whether a talk covers the ground you actually need.
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity .15s, transform .1s;
+      cursor: pointer;
+    }
+    .btn:hover { opacity: .88; transform: translateY(-1px); }
 
-**A transcript you can explore.**
-The full timestamped transcript is there when you want it — searchable, readable, and linked directly back to the exact moment in the video. No more scrubbing through a timeline trying to find the one part you half-remember.
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
 
-**One shareable page.**
-Everything — summary, audio player, key moment images, and transcript — is packaged into a single self-contained page that opens in any browser. Share it with a colleague, save it for reference, or publish it. No account required, no link that expires.
+    /* ── SECTIONS ── */
+    section {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 80px 24px;
+    }
 
----
+    section + section {
+      border-top: 1px solid var(--border);
+    }
 
-## Works the way you work
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 40px;
+    }
 
-Everyone processes content differently. Some people want to read first and listen later. Some want a single focused narrator; others find a two-host conversation easier to stay with on a long commute. Some want a quick five-frame visual overview; others want more.
+    /* ── FEATURE CARDS ── */
+    .features {
+      display: grid;
+      gap: 20px;
+    }
 
-PodSlacker is built to accommodate that. The format, the voices, the depth of coverage, the AI provider powering it — these are all adjustable. The outputs adapt to how you want to use them.
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+    }
 
----
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--accent2);
+      margin-bottom: 10px;
+    }
 
-## The honest pitch
+    .card p {
+      color: #bcc0d0;
+      font-size: 0.975rem;
+      line-height: 1.75;
+    }
 
-PodSlacker won't replace watching the things that are genuinely worth watching. It's not trying to.
+    /* ── FLEXIBILITY SECTION ── */
+    .flex-body {
+      font-size: 1.05rem;
+      color: #bcc0d0;
+      line-height: 1.8;
+      max-width: 680px;
+    }
 
-What it does is make the triage process dramatically faster — so the time you do invest goes toward content that actually deserves it. You stop watching things out of obligation or optimism. You start watching things because you already know they're worth it.
+    .flex-body p + p {
+      margin-top: 20px;
+    }
 
-Smart slacking isn't laziness. It's just knowing when you're done.
+    /* ── PITCH / CLOSER ── */
+    .pitch-body {
+      font-size: 1.1rem;
+      color: #bcc0d0;
+      max-width: 680px;
+      line-height: 1.8;
+    }
+
+    .pitch-body p + p {
+      margin-top: 20px;
+    }
+
+    .kicker {
+      margin-top: 40px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text);
+      font-style: italic;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--border);
+      text-align: center;
+      padding: 32px 24px;
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HERO -->
+  <header class="hero">
+    <div class="wordmark">PodSlacker</div>
+    <div class="tagline">Not every hour-long video deserves an hour.</div>
+
+    <p class="hero-body">
+      There's more worthwhile content on YouTube than any person could reasonably watch.
+      Tutorials, conference talks, interviews, deep dives, documentary essays — it keeps coming,
+      and the watch list keeps growing. The problem isn't finding content. It's figuring out
+      <em>which</em> content is actually worth your time before you've committed forty-five minutes to find out.
+    </p>
+
+    <p class="hero-body">
+      PodSlacker is for people who take their content seriously but their time even more so.
+      Point it at any YouTube video and it does the legwork: a written summary, a listenable
+      podcast you can take with you, visual snapshots of the key moments, and a full transcript
+      when you want to go deeper. Everything you need to make a smart call — watch, skip, or
+      save for later — without sitting through the whole thing first.
+    </p>
+
+    <p class="hero-body" style="color: var(--accent2); font-weight: 600;">
+      Then, only if it earns your full attention, you watch.
+    </p>
+  </header>
+
+  <!-- WHAT YOU GET -->
+  <section>
+    <h2>What you get</h2>
+    <div class="features">
+
+      <div class="card">
+        <div class="card-title">A summary worth reading.</div>
+        <p>A structured breakdown of the video's main ideas, key arguments, and takeaways — clear
+        enough to have an informed opinion in two minutes rather than forty. Not a transcript dump.
+        An actual summary.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">A podcast, ready when you are.</div>
+        <p>If the summary catches your interest but you're not in front of a screen, PodSlacker
+        generates a conversational audio version of the content. Two hosts discuss the material
+        naturally, or a single narrator walks you through it — your choice. Listen during your
+        commute, your workout, or while you're making dinner. The content comes with you.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Key moment screenshots.</div>
+        <p>Visual snapshots from the most significant points in the video give you a feel for what
+        you'd actually be watching: the slides, the diagrams, the demonstrations. Useful for quickly
+        gauging whether a technical tutorial is pitched at the right level, or whether a talk covers
+        the ground you actually need.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">A transcript you can explore.</div>
+        <p>The full timestamped transcript is there when you want it — searchable, readable, and
+        linked directly back to the exact moment in the video. No more scrubbing through a timeline
+        trying to find the one part you half-remember.</p>
+      </div>
+
+      <div class="card">
+        <div class="card-title">One shareable page.</div>
+        <p>Everything — summary, audio player, key moment images, and transcript — is packaged into
+        a single self-contained page that opens in any browser. Share it with a colleague, save it
+        for reference, or publish it. No account required, no link that expires.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- WORKS THE WAY YOU WORK -->
+  <section>
+    <h2>Works the way you work</h2>
+    <div class="flex-body">
+      <p>Everyone processes content differently. Some people want to read first and listen later.
+      Some want a single focused narrator; others find a two-host conversation easier to stay with
+      on a long commute. Some want a quick five-frame visual overview; others want more.</p>
+
+      <p>PodSlacker is built to accommodate that. The format, the voices, the depth of coverage,
+      the AI provider powering it — these are all adjustable. The outputs adapt to how you want
+      to use them.</p>
+    </div>
+  </section>
+
+  <!-- THE HONEST PITCH -->
+  <section>
+    <h2>The honest pitch</h2>
+    <div class="pitch-body">
+      <p>PodSlacker won't replace watching the things that are genuinely worth watching.
+      It's not trying to.</p>
+
+      <p>What it does is make the triage process dramatically faster — so the time you do invest
+      goes toward content that actually deserves it. You stop watching things out of obligation
+      or optimism. You start watching things because you already know they're worth it.</p>
+    </div>
+    <div class="kicker">Smart slacking isn't laziness. It's just knowing when you're done.</div>
+  </section>
+
+  <footer>
+    &copy; 2025 PodSlacker
+  </footer>
+
+</body>
+</html>

@@ -904,6 +904,69 @@ def capture_frames(
 # HTML page generation
 # ---------------------------------------------------------------------------
 
+def _strip_xing_header(data: bytes) -> bytes:
+    """Remove the Xing/Info/LAME VBR info frame from a concatenated MP3 stream.
+
+    OpenAI TTS returns each segment as its own MP3 file complete with a Xing
+    VBR header whose frame/byte counts describe only that one segment.  When
+    segments are concatenated the header is still present and still says the
+    stream ends after the first segment.  Standalone players are forgiving and
+    read past it; browsers stop exactly where the header says to.
+
+    Removing the info frame (which is silent padding anyway) forces the browser
+    to scan all actual audio frames and play the full stream.  The .mp3 file
+    saved to disk is not affected — this is applied only when embedding audio
+    in the HTML page.
+    """
+    for i in range(min(len(data) - 4, 1000)):
+        # Look for an MPEG frame sync word
+        if data[i] != 0xFF or (data[i + 1] & 0xE0) != 0xE0:
+            continue
+
+        hdr     = int.from_bytes(data[i:i + 4], "big")
+        version = (hdr >> 19) & 0x3  # 3=MPEG1, 2=MPEG2, 0=MPEG2.5
+        layer   = (hdr >> 17) & 0x3  # 1=Layer III (MP3)
+        ch_mode = (hdr >>  6) & 0x3  # 3=mono
+
+        if layer != 1:
+            break  # not Layer III — nothing to strip
+
+        # Offset to Xing tag within this frame
+        if version == 3:  # MPEG1
+            side_info = 17 if ch_mode == 3 else 32
+        else:             # MPEG2 / MPEG2.5
+            side_info =  9 if ch_mode == 3 else 17
+
+        xing_pos = i + 4 + side_info
+        if xing_pos + 4 > len(data):
+            break
+
+        if data[xing_pos:xing_pos + 4] not in (b"Xing", b"Info", b"LAME"):
+            break  # first frame has no VBR tag — nothing to strip
+
+        # Calculate frame size so we can excise the whole info frame
+        BITRATES_V1 = [0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0]
+        BITRATES_V2 = [0, 8,16,24,32,40,48,56, 64, 80, 96,112,128,144,160,0]
+        SR_TABLE    = {3: [44100,48000,32000,0],
+                       2: [22050,24000,16000,0],
+                       0: [11025,12000, 8000,0]}
+
+        br_idx  = (hdr >> 12) & 0xF
+        sr_idx  = (hdr >> 10) & 0x3
+        padding = (hdr >>  9) & 0x1
+
+        bitrates    = BITRATES_V1 if version == 3 else BITRATES_V2
+        sample_rate = SR_TABLE.get(version, SR_TABLE[3])[sr_idx]
+        bitrate     = bitrates[br_idx] * 1000
+
+        if bitrate == 0 or sample_rate == 0:
+            break
+
+        frame_size = (144 * bitrate // sample_rate) + padding
+        return data[:i] + data[i + frame_size:]
+
+    return data  # no Xing header found — return unchanged
+
 _PAGE_CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -1120,7 +1183,10 @@ def generate_page(
     audio_fname = ""
     has_audio = False
     if audio_path and audio_path.exists():
-        audio_b64 = base64.b64encode(audio_path.read_bytes()).decode("ascii")
+        audio_bytes = audio_path.read_bytes()
+        if audio_path.suffix.lower() == ".mp3":
+            audio_bytes = _strip_xing_header(audio_bytes)
+        audio_b64 = base64.b64encode(audio_bytes).decode("ascii")
         audio_mime = "audio/wav" if audio_path.suffix.lower() == ".wav" else "audio/mpeg"
         audio_fname = _html.escape(audio_path.name)
         audio_element = (
