@@ -408,6 +408,88 @@ def generate_audio(
     output_path.write_bytes(b"".join(chunks))
 
 
+def generate_audio_kokoro(
+    segments: list[tuple[str, str]],
+    output_path: Path,
+    voice_alex: str = "am_michael",
+    voice_jordan: str = "af_heart",
+    lang_code: str = "a",
+    speed: float = 1.0,
+) -> None:
+    """Generate TTS for each dialogue segment using Kokoro and write a WAV file.
+
+    Kokoro runs entirely locally on CPU — no API key or internet access required
+    after the model weights are downloaded on first run (~82 MB from HuggingFace).
+
+    Requires:  pip install kokoro
+    Output:    a mono 24 kHz WAV file (universally playable, no ffmpeg needed).
+
+    voice_alex / voice_jordan — Kokoro voice IDs.
+        American English voices:
+            Female: af_heart (default for Jordan), af_bella, af_nicole, af_sarah, af_sky
+            Male:   am_michael (default for Alex), am_adam
+        British English voices (use lang_code='b'):
+            Female: bf_emma, bf_isabella
+            Male:   bm_george, bm_lewis
+    lang_code — 'a' for American English, 'b' for British English.
+    speed     — Speech rate multiplier (1.0 = normal, 1.2 = 20% faster, etc.).
+    """
+    try:
+        from kokoro import KPipeline
+        import numpy as np
+    except ImportError:
+        print(
+            "\n  ✗ kokoro is not installed. Run: pip install kokoro\n"
+            "    On first run, model weights (~82 MB) are downloaded automatically."
+        )
+        sys.exit(1)
+
+    import wave
+
+    SAMPLE_RATE = 24_000
+    PAUSE_SAMPLES = int(SAMPLE_RATE * 0.6)  # 0.6 s of silence between turns
+
+    voice_map = {"ALEX": voice_alex, "JORDAN": voice_jordan, "HOST": voice_alex}
+    total = len(segments)
+
+    print(f"   Loading Kokoro model (lang={lang_code}, device=cpu)...")
+    pipeline = KPipeline(lang_code=lang_code, repo_id="hexgrad/Kokoro-82M")
+
+    all_audio: list[np.ndarray] = []
+    silence = np.zeros(PAUSE_SAMPLES, dtype=np.float32)
+
+    for i, (speaker, text) in enumerate(segments, 1):
+        print(f"   Segment {i}/{total}  [{speaker}]  \"{text[:60]}...\"")
+        voice = voice_map[speaker]
+
+        # Kokoro may split long text into multiple chunks; concatenate them all.
+        chunks: list[np.ndarray] = []
+        for result in pipeline(text, voice=voice, speed=speed):
+            if result.audio is not None:
+                chunks.append(result.audio.numpy())
+
+        if not chunks:
+            print(f"   Warning: no audio generated for segment {i} — skipping.")
+            continue
+
+        all_audio.append(np.concatenate(chunks))
+        if i < total:
+            all_audio.append(silence)
+
+    if not all_audio:
+        raise RuntimeError("Kokoro produced no audio output.")
+
+    combined = np.concatenate(all_audio)
+
+    # Write as 16-bit mono WAV using Python's stdlib — no ffmpeg required.
+    audio_int16 = np.clip(combined * 32767, -32768, 32767).astype(np.int16)
+    with wave.open(str(output_path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)       # 2 bytes = 16-bit
+        wf.setframerate(SAMPLE_RATE)
+        wf.writeframes(audio_int16.tobytes())
+
+
 # ---------------------------------------------------------------------------
 # Markdown assembly & parsing
 # ---------------------------------------------------------------------------
@@ -513,9 +595,9 @@ def main() -> None:
 
     parser.add_argument(
         "--output-dir", "-o",
-        default=".",
+        default="outputs",
         metavar="DIR",
-        help="Directory for output files (default: current directory)",
+        help="Directory for output files (default: outputs/)",
     )
     parser.add_argument(
         "--no-audio",
@@ -597,13 +679,29 @@ def main() -> None:
         ),
     )
 
-    # ---- TTS provider flags ----
-    tts_group = parser.add_argument_group("TTS provider (audio generation)")
+    # ---- TTS engine selection ----
+    parser.add_argument(
+        "--tts-engine",
+        default="openai",
+        choices=["openai", "kokoro"],
+        help=(
+            "TTS engine to use for audio generation. "
+            "'openai' (default) uses the OpenAI speech API — requires OPENAI_API_KEY. "
+            "'kokoro' runs a local open-source model on CPU — free, no API key needed, "
+            "outputs a .wav file. Requires: pip install kokoro"
+        ),
+    )
+
+    # ---- OpenAI TTS flags ----
+    tts_group = parser.add_argument_group(
+        "OpenAI TTS options",
+        "Used when --tts-engine openai (the default).",
+    )
     tts_group.add_argument(
         "--tts-model",
         default="tts-1",
         metavar="MODEL",
-        help="OpenAI TTS model to use. Default: tts-1  (tts-1-hd for higher quality)",
+        help="OpenAI TTS model. Default: tts-1  (tts-1-hd for higher quality)",
     )
     tts_group.add_argument(
         "--tts-api-key-env",
@@ -618,13 +716,53 @@ def main() -> None:
         "--voice-alex",
         default="onyx",
         choices=["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
-        help="OpenAI TTS voice for host Alex (default: onyx)",
+        help="OpenAI voice for host Alex (default: onyx)",
     )
     tts_group.add_argument(
         "--voice-jordan",
         default="nova",
         choices=["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
-        help="OpenAI TTS voice for host Jordan (default: nova)",
+        help="OpenAI voice for host Jordan (default: nova)",
+    )
+
+    # ---- Kokoro TTS flags ----
+    kokoro_group = parser.add_argument_group(
+        "Kokoro TTS options",
+        "Used when --tts-engine kokoro. Runs locally on CPU; no API key required. "
+        "Model weights (~82 MB) are downloaded automatically from HuggingFace on first run.",
+    )
+    kokoro_group.add_argument(
+        "--kokoro-voice-alex",
+        default="am_michael",
+        metavar="VOICE",
+        help=(
+            "Kokoro voice ID for host Alex. Default: am_michael (American male). "
+            "American male: am_michael, am_adam. "
+            "American female: af_heart, af_bella, af_nicole, af_sarah, af_sky. "
+            "British (use --kokoro-lang b): bm_george, bm_lewis, bf_emma, bf_isabella."
+        ),
+    )
+    kokoro_group.add_argument(
+        "--kokoro-voice-jordan",
+        default="af_heart",
+        metavar="VOICE",
+        help=(
+            "Kokoro voice ID for host Jordan. Default: af_heart (American female). "
+            "In --hosts 1 mode this flag is unused; Alex's voice is used throughout."
+        ),
+    )
+    kokoro_group.add_argument(
+        "--kokoro-lang",
+        default="a",
+        choices=["a", "b"],
+        help="Kokoro language variant: 'a' = American English (default), 'b' = British English.",
+    )
+    kokoro_group.add_argument(
+        "--kokoro-speed",
+        type=float,
+        default=1.0,
+        metavar="RATE",
+        help="Speech rate multiplier for Kokoro. Default: 1.0 (normal speed). Try 1.1 for slightly faster delivery.",
     )
 
     args = parser.parse_args()
@@ -638,14 +776,14 @@ def main() -> None:
         llm_kwargs["base_url"] = args.llm_base_url
     llm_client = OpenAI(**llm_kwargs)
 
-    # ---- Build TTS client (may be the same key, or a different one) ----
-    if args.no_audio:
-        tts_client = None  # won't be used
-    elif args.tts_api_key_env == args.llm_api_key_env and args.llm_base_url is None:
-        tts_client = llm_client  # exact same config — reuse
-    else:
-        tts_api_key = _require_env(args.tts_api_key_env, "TTS API key")
-        tts_client = OpenAI(api_key=tts_api_key)  # TTS always hits OpenAI's endpoint
+    # ---- Build OpenAI TTS client (only needed for --tts-engine openai) ----
+    tts_client = None
+    if not args.no_audio and args.tts_engine == "openai":
+        if args.tts_api_key_env == args.llm_api_key_env and args.llm_base_url is None:
+            tts_client = llm_client  # exact same config — reuse
+        else:
+            tts_api_key = _require_env(args.tts_api_key_env, "TTS API key")
+            tts_client = OpenAI(api_key=tts_api_key)
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -660,6 +798,17 @@ def main() -> None:
     except Exception as exc:
         print(f"   ✗ {exc}")
         sys.exit(1)
+
+    transcript_path = output_dir / f"{video_id}_transcript.md"
+    transcript_md = (
+        f"# Transcript\n\n"
+        f"**Source:** {args.url}  \n"
+        f"**Video ID:** `{video_id}`\n\n"
+        f"---\n\n"
+        f"{transcript}\n"
+    )
+    transcript_path.write_text(transcript_md, encoding="utf-8")
+    print(f"   ✓ Transcript saved → {transcript_path}")
 
     # ---- Step 2: AI content (or load from cache) ----
     md_path = output_dir / f"{video_id}_summary.md"
@@ -709,21 +858,39 @@ def main() -> None:
 
     # ---- Step 4: Audio ----
     if not args.no_audio:
-        print(f"\n🎙️   Generating podcast audio  [OpenAI TTS / {args.tts_model}]…")
-        audio_path = output_dir / f"{video_id}_podcast.mp3"
-        try:
-            generate_audio(
-                tts_client,
-                dialogue_segments,
-                audio_path,
-                voice_alex=args.voice_alex,
-                voice_jordan=args.voice_jordan,
-                tts_model=args.tts_model,
-            )
-            print(f"\n🎧  Podcast saved → {audio_path}")
-        except Exception as exc:
-            print(f"   ✗ Audio generation failed: {exc}")
-            sys.exit(1)
+        if args.tts_engine == "kokoro":
+            audio_path = output_dir / f"{video_id}_podcast.wav"
+            print(f"\n🎙️   Generating podcast audio  [Kokoro / local CPU]…")
+            print(f"   Voices: Alex={args.kokoro_voice_alex}, Jordan={args.kokoro_voice_jordan}")
+            try:
+                generate_audio_kokoro(
+                    dialogue_segments,
+                    audio_path,
+                    voice_alex=args.kokoro_voice_alex,
+                    voice_jordan=args.kokoro_voice_jordan,
+                    lang_code=args.kokoro_lang,
+                    speed=args.kokoro_speed,
+                )
+                print(f"\n🎧  Podcast saved → {audio_path}  (WAV, 24 kHz mono)")
+            except Exception as exc:
+                print(f"   ✗ Audio generation failed: {exc}")
+                sys.exit(1)
+        else:
+            audio_path = output_dir / f"{video_id}_podcast.mp3"
+            print(f"\n🎙️   Generating podcast audio  [OpenAI TTS / {args.tts_model}]…")
+            try:
+                generate_audio(
+                    tts_client,
+                    dialogue_segments,
+                    audio_path,
+                    voice_alex=args.voice_alex,
+                    voice_jordan=args.voice_jordan,
+                    tts_model=args.tts_model,
+                )
+                print(f"\n🎧  Podcast saved → {audio_path}")
+            except Exception as exc:
+                print(f"   ✗ Audio generation failed: {exc}")
+                sys.exit(1)
 
     print("\n✅  All done!\n")
 

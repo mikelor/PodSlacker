@@ -8,7 +8,7 @@ Turn any YouTube video into a podcast. podslacker fetches a video's transcript, 
 
 ```bash
 # 1. Install dependencies
-pip install -r requirements.txt
+pip install youtube-transcript-api openai
 
 # 2. Set your OpenAI API key
 export OPENAI_API_KEY=sk-...
@@ -17,9 +17,10 @@ export OPENAI_API_KEY=sk-...
 python podslacker.py https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
-Two files are created in the current directory:
+Three files are created in the `outputs/` folder:
+- `<video_id>_transcript.md` — the raw transcript retrieved from YouTube
 - `<video_id>_summary.md` — structured markdown summary + podcast script
-- `<video_id>_podcast.mp3` — the generated podcast audio
+- `<video_id>_podcast.mp3` — the generated podcast audio (`.wav` when using Kokoro)
 
 ---
 
@@ -34,7 +35,7 @@ Python 3.10 or later is required (the script uses `X | Y` union type hints).
 Install with pip:
 
 ```bash
-pip install pip install -r requirements.txt
+pip install youtube-transcript-api openai
 ```
 
 | Package | Version | Purpose |
@@ -80,9 +81,9 @@ python podslacker.py <url> [options]
 
 | Flag | Default | Description |
 |---|---|---|
-| `--output-dir DIR`, `-o DIR` | `.` (current directory) | Directory where the markdown and MP3 files are saved. Created automatically if it doesn't exist. |
+| `--output-dir DIR`, `-o DIR` | `outputs/` | Directory where all output files are saved. Created automatically if it doesn't exist. |
 | `--hosts {1,2}` | `2` | Number of podcast hosts. `1` produces a solo monologue narrated by a single host. `2` produces a two-host dialogue between Alex and Jordan. |
-| `--no-audio` | off | Skip TTS audio generation entirely. Only the markdown summary file is produced. Useful for a quick read-through or when you just want the written script. |
+| `--no-audio` | off | Skip TTS audio generation entirely. The transcript and summary markdown files are still written; only the audio file is omitted. |
 | `--reuse-summary` | off | If a summary markdown for this video already exists in `--output-dir`, skip the LLM call and read the script directly from that file. Saves LLM API costs when re-generating audio. Falls back to LLM generation if the file is not found. |
 
 ### YouTube access options
@@ -124,9 +125,15 @@ These flags let you swap out the system prompts sent to the LLM without editing 
 | `--dialogue-prompt FILE` | `prompts/dialogue.txt` | System prompt for the two-host dialogue LLM call (used when `--hosts 2`). |
 | `--monologue-prompt FILE` | `prompts/monologue.txt` | System prompt for the solo monologue LLM call (used when `--hosts 1`). |
 
-### TTS provider options
+### TTS engine
 
-Audio is always generated via OpenAI's TTS endpoint. These flags control which model and voices are used.
+| Flag | Default | Description |
+|---|---|---|
+| `--tts-engine {openai,kokoro}` | `openai` | Which TTS engine to use. `openai` calls the OpenAI speech API (requires an API key, outputs MP3). `kokoro` runs a local open-source model on CPU (free, no API key, outputs WAV). |
+
+### OpenAI TTS options
+
+Used when `--tts-engine openai` (the default).
 
 | Flag | Default | Description |
 |---|---|---|
@@ -135,7 +142,32 @@ Audio is always generated via OpenAI's TTS endpoint. These flags control which m
 | `--voice-alex VOICE` | `onyx` | Voice used for host Alex (solo host in `--hosts 1` mode, or the analytical host in two-host mode). |
 | `--voice-jordan VOICE` | `nova` | Voice used for host Jordan (only applies in `--hosts 2` mode). |
 
-**Available voices:** `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
+**Available OpenAI voices:** `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
+
+### Kokoro TTS options
+
+Used when `--tts-engine kokoro`. Kokoro is a high-quality open-source TTS model that runs locally on CPU. No API key is required. On first run, model weights (~82 MB) are downloaded automatically from HuggingFace. Output is a `.wav` file.
+
+Install before use:
+```bash
+pip install kokoro
+```
+
+| Flag | Default | Description |
+|---|---|---|
+| `--kokoro-voice-alex VOICE` | `am_michael` | Kokoro voice ID for host Alex (and the sole host in `--hosts 1` mode). |
+| `--kokoro-voice-jordan VOICE` | `af_heart` | Kokoro voice ID for host Jordan (`--hosts 2` only). |
+| `--kokoro-lang {a,b}` | `a` | Language variant: `a` = American English, `b` = British English. |
+| `--kokoro-speed RATE` | `1.0` | Speech rate multiplier. Try `1.1` for slightly faster delivery. |
+
+**Available Kokoro voices:**
+
+| Accent | Gender | Voice IDs |
+|---|---|---|
+| American (`--kokoro-lang a`) | Male | `am_michael`, `am_adam` |
+| American (`--kokoro-lang a`) | Female | `af_heart`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky` |
+| British (`--kokoro-lang b`) | Male | `bm_george`, `bm_lewis` |
+| British (`--kokoro-lang b`) | Female | `bf_emma`, `bf_isabella` |
 
 ---
 
@@ -183,6 +215,32 @@ python podslacker.py https://youtu.be/VIDEO_ID \
   --llm-base-url http://localhost:11434/v1 \
   --llm-model llama3.2 \
   --llm-api-key-env OPENAI_API_KEY
+```
+
+**Use Kokoro for free local TTS (no API key for audio):**
+```bash
+pip install kokoro
+python podslacker.py https://youtu.be/VIDEO_ID --tts-engine kokoro
+# Outputs: <video_id>_podcast.wav
+```
+
+**Kokoro with British voices:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --tts-engine kokoro \
+  --kokoro-lang b \
+  --kokoro-voice-alex bm_george \
+  --kokoro-voice-jordan bf_emma
+```
+
+**Fully free run — local LLM (Ollama) + local TTS (Kokoro):**
+```bash
+pip install kokoro
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --llm-base-url http://localhost:11434/v1 \
+  --llm-model llama3.2 \
+  --llm-api-key-env OPENAI_API_KEY \
+  --tts-engine kokoro
 ```
 
 **Use a custom dialogue prompt for a different show format:**
@@ -304,32 +362,35 @@ podslacker is a single-file Python script with four clearly separated stages tha
 YouTube URL
     │
     ▼
-┌─────────────────────┐
-│  1. Transcript fetch │  youtube-transcript-api
-└─────────────────────┘
+┌──────────────────────┐
+│  1. Transcript fetch  │  youtube-transcript-api
+└──────────────────────┘
+    │  writes outputs/<video_id>_transcript.md
     │  raw transcript text
     ▼
-┌─────────────────────┐
-│  2. LLM generation  │  OpenAI-compatible chat completions
-└─────────────────────┘
+┌──────────────────────┐
+│  2. LLM generation   │  OpenAI-compatible chat completions
+└──────────────────────┘
     │  markdown summary + podcast script
     ▼
-┌─────────────────────┐
-│  3. File output     │  writes <video_id>_summary.md
-└─────────────────────┘
+┌──────────────────────┐
+│  3. File output      │  writes outputs/<video_id>_summary.md
+└──────────────────────┘
     │  script segments
     ▼
-┌─────────────────────┐
-│  4. TTS audio       │  OpenAI speech endpoint
-└─────────────────────┘
+┌──────────────────────┐
+│  4. TTS audio        │  OpenAI (MP3)  or  Kokoro local (WAV)
+└──────────────────────┘
     │
     ▼
-<video_id>_podcast.mp3
+outputs/<video_id>_podcast.mp3  (or .wav)
 ```
 
 ### Stage 1 — Transcript fetch (`fetch_transcript`)
 
 Uses `youtube-transcript-api` to download the video's auto-generated or manually uploaded captions. The raw caption entries (each a short text snippet with a timestamp) are concatenated into a single string. If English captions are not available, the library falls back to any other available language. Optionally, a `requests.Session` loaded with browser cookies or a `GenericProxyConfig` is injected into the API client to work around YouTube IP blocks.
+
+Once fetched, the full transcript is immediately saved to `outputs/<video_id>_transcript.md` — a plain markdown file with a header containing the source URL and video ID, followed by the raw transcript text. This happens unconditionally before any LLM call, so the transcript is preserved even if later stages fail.
 
 ### Stage 2 — LLM generation (`generate_content`)
 
@@ -349,11 +410,15 @@ The LLM client is built from the `openai` Python library with a configurable `ba
 
 ### Stage 3 — Markdown output (`build_markdown`)
 
-The summary and the parsed script are assembled into a single markdown file. The file contains the source URL, the summary, a horizontal rule, then the full podcast script with each speaker's lines in bold. This file is also the cache target for `--reuse-summary`: if it already exists, the script stage is skipped entirely and the dialogue segments are re-parsed from the file by `parse_dialogue_from_markdown`.
+The summary and the parsed script are assembled into `outputs/<video_id>_summary.md`. The file contains the source URL and video ID, the LLM-generated summary, a horizontal rule, then the full podcast script with each speaker's lines in bold. This file is also the cache target for `--reuse-summary`: if it already exists, the LLM stage is skipped entirely and the dialogue segments are re-parsed from it by `parse_dialogue_from_markdown`.
 
-### Stage 4 — Audio generation (`generate_audio`)
+### Stage 4 — Audio generation
 
-Each `(speaker, text)` segment is sent to OpenAI's `/audio/speech` endpoint one at a time. Two different voices are used — one per host — so listeners can tell speakers apart. The raw MP3 bytes returned by each TTS call are collected in a list. Between segments, a short burst of silent MP3 frames (~0.5 s) is appended to create a natural pause. All chunks are then concatenated and written to a single `.mp3` file. This approach requires no system-level audio tools like ffmpeg.
+Two TTS engines are available, selected by `--tts-engine`.
+
+**`generate_audio` (OpenAI, default):** Each `(speaker, text)` segment is sent to OpenAI's `/audio/speech` endpoint one at a time. Two different voices are used — one per host — so listeners can tell speakers apart. The raw MP3 bytes returned by each call are collected in a list; between segments, a short burst of silent MP3 frames (~0.6 s) is appended as a natural pause. All chunks are concatenated and written to a single `.mp3` file. No ffmpeg required.
+
+**`generate_audio_kokoro` (Kokoro, local):** A `KPipeline` is created pointing at the `hexgrad/Kokoro-82M` model on HuggingFace (downloaded once on first run, ~82 MB). Each segment is synthesised as a `torch.FloatTensor` audio array at 24 kHz. Long segments are automatically split and re-joined by the pipeline. Between segments, a 0.6 s array of zeros is appended as silence. The combined numpy array is written to a `.wav` file using Python's stdlib `wave` module — no ffmpeg, no soundfile library required.
 
 ### Key design decisions
 
@@ -362,5 +427,7 @@ Each `(speaker, text)` segment is sent to OpenAI's `/audio/speech` endpoint one 
 **Env-var key references.** API keys are never passed as command-line arguments. Instead, flags like `--llm-api-key-env` accept the *name* of an environment variable, keeping secrets out of shell history and process listings.
 
 **No ffmpeg dependency.** MP3 is a frame-based format, so segments can be concatenated as raw bytes and the result plays back correctly in all standard media players. Silent frames are generated from a known-good MP3 frame header rather than by encoding silence, removing the need for any audio processing library.
+
+**Pluggable TTS engines.** The audio generation step is cleanly separated from the rest of the pipeline. Adding a new engine only requires a new `generate_audio_*` function and a branch in `main()`. The existing OpenAI path is completely unchanged when `--tts-engine openai` is used.
 
 **Externalised prompts with graceful fallback.** The system prompts that drive the LLM are stored as plain text files in a `prompts/` folder, making them editable without touching Python code. A three-level priority chain (CLI flag → default file → hardcoded string) means the script degrades gracefully: it works even if the `prompts/` folder is deleted, and a single flag is enough to swap in a completely different prompt for a one-off run.
