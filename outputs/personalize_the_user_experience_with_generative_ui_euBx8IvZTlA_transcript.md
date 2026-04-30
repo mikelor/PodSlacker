@@ -1,6 +1,6 @@
 # Transcript: Personalize the user experience with generative UI
 
-**Source:** https://www.youtube.com/watch?v=euBx8IvZTlAj  
+**Source:** https://www.youtube.com/watch?v=euBx8IvZTlAjD  
 **Video ID:** `euBx8IvZTlA`
 
 ---

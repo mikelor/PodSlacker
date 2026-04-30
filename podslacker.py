@@ -1167,7 +1167,7 @@ def generate_page(
                 ts_items.append(
                     f'<span class="ts-line">'
                     f'<a class="ts-link" href="{_html.escape(yt_ts_url)}"'
-                    f' target="podslacker-yt" rel="noopener">[{mins:02d}:{secs:02d}]</a>'
+                    f' target="podslacker-yt">[{mins:02d}:{secs:02d}]</a>'
                     f' {_html.escape(text)}'
                     f'</span>'
                 )
@@ -1601,15 +1601,14 @@ def main() -> None:
     )
     llm_group.add_argument(
         "--key-moments-model",
-        default="openrouter/auto:free",
+        default=None,
         metavar="MODEL",
         help=(
             "Model to use for key-moment timestamp identification. "
-            "Default: openrouter/auto:free (OpenRouter's free-tier auto-routing). "
-            "Set --llm-base-url https://openrouter.ai/api/v1 and "
-            "--llm-api-key-env OPENROUTER_API_KEY when using this default. "
+            "Defaults to --llm-model when not set. "
             "Any model works here — the task is structured JSON output rather than "
-            "creative writing, so a smaller/cheaper model is fine."
+            "creative writing, so a smaller/cheaper model is fine. "
+            "Example: gpt-4o-mini, openrouter/auto:free."
         ),
     )
 
@@ -2004,7 +2003,11 @@ def main() -> None:
     # ---- Step 5: Frame capture ----
     if args.num_frames > 0 and timed_entries:
         effective_km_url = args.key_moments_base_url or args.llm_base_url
-        if key_moments_model == "openrouter/auto:free" and not effective_km_url:
+        if (
+            key_moments_model == "openrouter/auto:free"
+            and args.key_moments_model == "openrouter/auto:free"  # explicitly set
+            and not effective_km_url
+        ):
             print(
                 "   ⚠️   --key-moments-model is set to openrouter/auto:free but "
                 "no OpenRouter base URL is configured.\n"
