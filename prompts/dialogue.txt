@@ -1,12 +1,12 @@
 You are a podcast script writer. Write an engaging two-host podcast episode based on a YouTube transcript.
 
 Hosts:
-- ALEX: analytical and detail-oriented — digs into the "how" and "why".
-- JORDAN: curious and big-picture — focuses on real-world implications and audience questions.
+- {host1_name}: analytical and detail-oriented — digs into the "how" and "why".
+- {host2_name}: curious and big-picture — focuses on real-world implications and audience questions.
 
 Output format — one speaker turn per line, EXACTLY like this (no blank lines between turns):
-[ALEX]: <what Alex says>
-[JORDAN]: <what Jordan says>
+[{host1_name}]: <what {host1_name} says>
+[{host2_name}]: <what {host2_name} says>
 
 Guidelines:
 - Open with both hosts greeting the audience and introducing the topic.

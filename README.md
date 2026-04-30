@@ -8,7 +8,7 @@ Turn any YouTube video into a podcast. podslacker fetches a video's transcript, 
 
 ```bash
 # 1. Install dependencies
-pip install youtube-transcript-api openai requests yt-dlp opencv-python-headless
+pip install youtube-transcript-api openai requests yt-dlp opencv-python-headless markdown
 
 # 2. Set your OpenAI API key
 export OPENAI_API_KEY=sk-...
@@ -24,6 +24,7 @@ Files created in the `outputs/` folder:
 - `<video_id>_summary.md` — structured markdown summary + podcast script
 - `<video_id>_podcast.mp3` — the generated podcast audio (`.wav` when using Kokoro)
 - `<video_id>_frame_01.jpg`, `_frame_02.jpg`, … — key-moment screenshots (5 by default; set `--num-frames 0` to skip)
+- `<video_id>_page.html` — self-contained HTML page with rendered summary, image gallery, and built-in audio player (use `--no-page` to skip)
 
 ---
 
@@ -59,6 +60,18 @@ pip install yt-dlp opencv-python-headless
 | `opencv-python-headless` | >= 4.8.0 | Seeks to timestamps and captures JPEG frames from the stream |
 
 If you do not want frame capture, pass `--num-frames 0` and you do not need these packages.
+
+**HTML page generation (optional, enabled by default):**
+
+```bash
+pip install markdown
+```
+
+| Package | Version | Purpose |
+|---|---|---|
+| `markdown` | >= 3.5 | Converts the summary markdown to properly rendered HTML inside the page |
+
+Without this package, the summary is displayed as escaped plain text — still readable, but without formatting. Pass `--no-page` to skip page generation entirely.
 
 No system-level dependencies are needed. The script concatenates MP3 audio as raw bytes, so **ffmpeg is not required**.
 
@@ -111,6 +124,7 @@ python podslacker.py <url> [options]
 | `--no-audio` | off | Skip TTS audio generation entirely. The transcript and summary markdown files are still written; only the audio file is omitted. |
 | `--reuse-summary` | off | If a summary markdown for this video already exists in `--output-dir`, skip the LLM call and read the script directly from that file. Saves LLM API costs when re-generating audio. Falls back to LLM generation if the file is not found. |
 | `--num-frames N` | `5` | Number of key-moment JPEG frames to capture from the video. The LLM automatically identifies the most significant timestamps. Set to `0` to disable entirely. Requires `yt-dlp` and `opencv-python-headless`. |
+| `--no-page` | off | Skip HTML page generation. By default podslacker produces a self-contained `<video_id>_page.html` file that bundles everything into a single shareable file. |
 
 ### YouTube access options
 
@@ -130,7 +144,6 @@ podslacker uses the OpenAI chat completions API for summarisation and script gen
 | `--llm-base-url URL` | OpenAI (`https://api.openai.com/v1`) | Base URL of the chat completions endpoint. Set this to use an alternative provider. |
 | `--llm-model MODEL` | `gpt-4o` | Model name to request. Use the model identifier the provider expects. |
 | `--llm-api-key-env VAR` | `OPENAI_API_KEY` | Name of the environment variable that holds the LLM API key. Keeping the key in an env var avoids it appearing in shell history. |
-| `--key-moments-model MODEL` | `openrouter/auto:free` | Model to use specifically for key-moment timestamp identification. Defaults to OpenRouter's free-tier auto-routing, which keeps frame analysis cost-free. Requires `--llm-base-url https://openrouter.ai/api/v1` and `--llm-api-key-env OPENROUTER_API_KEY` when using this default. Any model works here — the task is structured JSON output rather than creative writing. |
 
 **Compatible providers (examples):**
 
@@ -181,6 +194,16 @@ These flags let you swap out the system prompts sent to the LLM without editing 
 | `--monologue-prompt FILE` | `prompts/monologue.txt` | System prompt for the solo monologue LLM call (used when `--hosts 1`). |
 | `--key-moments-prompt FILE` | `prompts/key_moments.txt` | System prompt for the key-moment timestamp identification step. The literal text `{num_frames}` anywhere in the file is replaced at runtime with the value of `--num-frames`. |
 
+### HTML page & GitHub Pages options
+
+| Flag | Default | Description |
+|---|---|---|
+| `--no-page` | off | Skip HTML page generation. |
+| `--publish-github` | off | After generating the page, publish it to GitHub Pages. Requires a GitHub Personal Access Token with `repo` and `pages` scopes stored in the env var named by `--github-token-env`. |
+| `--github-repo REPO` | `podslacker-pages` | GitHub repository name to publish to. Created automatically as a public repo if it doesn't already exist. |
+| `--github-token-env VAR` | `GITHUB_TOKEN` | Name of the environment variable that holds the GitHub Personal Access Token. |
+| `--github-branch BRANCH` | `gh-pages` | Branch in the GitHub repository to publish to. Created from the default branch if it doesn't exist. |
+
 ### TTS engine
 
 | Flag | Default | Description |
@@ -208,6 +231,28 @@ Install before use:
 ```bash
 pip install kokoro
 ```
+
+> **HuggingFace authentication warning**
+>
+> When using Kokoro you may see:
+> ```
+> Warning: You are sending unauthenticated requests to the HF Hub.
+> Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+> ```
+> This is harmless — Kokoro still works — but you can silence it by authenticating with HuggingFace. Pick either option:
+>
+> **Option A — Environment variable (quickest):**
+> Create a free account at [huggingface.co](https://huggingface.co), generate a read-only token at https://huggingface.co/settings/tokens, then set it in your shell:
+> ```bash
+> export HF_TOKEN=hf_...
+> ```
+>
+> **Option B — CLI login (persists across sessions):**
+> ```bash
+> pip install huggingface_hub
+> huggingface-cli login
+> ```
+> This stores your token in `~/.cache/huggingface/token` so you never have to set the env var again.
 
 | Flag | Default | Description |
 |---|---|---|
@@ -329,6 +374,32 @@ python podslacker.py https://youtu.be/VIDEO_ID \
   --host2-name TAYLOR
 ```
 
+**Generate only the HTML page (no audio, no frames):**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID --no-audio --num-frames 0
+# Produces: <video_id>_page.html with the rendered summary
+```
+
+**Skip page generation:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID --no-page
+```
+
+**Publish the page to GitHub Pages:**
+```bash
+export GITHUB_TOKEN=ghp_...   # Personal Access Token with repo + pages scopes
+python podslacker.py https://youtu.be/VIDEO_ID --publish-github
+# Outputs: https://<username>.github.io/podslacker-pages/<video_id>_page.html
+```
+
+**Publish to a custom repo and branch:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --publish-github \
+  --github-repo my-podcast-site \
+  --github-branch main
+```
+
 **Use a different model and provider for each step:**
 ```bash
 export OPENAI_API_KEY=sk-...
@@ -379,17 +450,41 @@ CLI flag  >  podslacker.json  >  argparse hardcoded default
 
   "output_dir": "~/podcasts",
   "hosts": 2,
+  "host1_name": "ALEX",
+  "host2_name": "JORDAN",
   "num_frames": 3,
 
   "llm_base_url": "https://openrouter.ai/api/v1",
   "llm_model": "anthropic/claude-3-5-sonnet",
   "llm_api_key_env": "OPENROUTER_API_KEY",
+
+  "summary_model": null,
+  "summary_base_url": null,
+  "summary_api_key_env": null,
+
+  "script_model": null,
+  "script_base_url": null,
+  "script_api_key_env": null,
+
   "key_moments_model": "openrouter/auto:free",
+  "key_moments_base_url": null,
+  "key_moments_api_key_env": null,
 
   "tts_engine": "openai",
   "tts_model": "tts-1-hd",
-  "voice_alex": "onyx",
-  "voice_jordan": "nova"
+  "voice_host1": "onyx",
+  "voice_host2": "nova",
+
+  "kokoro_voice_host1": "am_michael",
+  "kokoro_voice_host2": "af_heart",
+  "kokoro_lang": "a",
+  "kokoro_speed": 1.0,
+
+  "no_page": false,
+  "publish_github": false,
+  "github_repo": "podslacker-pages",
+  "github_token_env": "GITHUB_TOKEN",
+  "github_branch": "gh-pages"
 }
 ```
 
@@ -426,7 +521,7 @@ Edit any of these files to change the LLM's behaviour for every future run.
 
 Each prompt is resolved using the following priority, from highest to lowest:
 
-1. **CLI flag** — `--summary-prompt FILE`, `--dialogue-prompt FILE`, or `--monologue-prompt FILE`. If provided, this file is always used.
+1. **CLI flag** — `--summary-prompt FILE`, `--dialogue-prompt FILE`, `--monologue-prompt FILE`, or `--key-moments-prompt FILE`. If provided, this file is always used.
 2. **Default prompt file** — the corresponding file in `prompts/` next to the script, if it exists and is non-empty.
 3. **Built-in fallback** — the prompt string hardcoded inside `podslacker.py`, used automatically if both the CLI flag and the default file are absent or empty.
 
@@ -521,7 +616,7 @@ python podslacker.py https://youtu.be/VIDEO_ID \
 
 ## Architecture and Components
 
-podslacker is a single-file Python script with five clearly separated stages that run in sequence.
+podslacker is a single-file Python script with six clearly separated stages that run in sequence.
 
 ```
 YouTube URL
@@ -558,6 +653,18 @@ outputs/<video_id>_podcast.mp3  (or .wav)
     │
     ▼
 outputs/<video_id>_frame_01.jpg … _frame_N.jpg
+
+    │  (unless --no-page)
+    ▼
+┌──────────────────────────┐
+│  6. HTML page             │  markdown + base64 assets
+└──────────────────────────┘
+    │
+    ▼
+outputs/<video_id>_page.html
+    │  (if --publish-github)
+    ▼
+https://<user>.github.io/<repo>/<video_id>_page.html
 ```
 
 ### Stage 1 — Transcript fetch (`fetch_transcript`)
@@ -566,21 +673,19 @@ Uses `youtube-transcript-api` to download the video's auto-generated or manually
 
 Once fetched, the transcript is immediately saved to `outputs/<video_id>_transcript.md` — a plain markdown file with a header containing the source URL and video ID, followed by the caption entries written one per line with a `[MM:SS]` timestamp prefix. This happens unconditionally before any LLM call, so the transcript is preserved even if later stages fail.
 
-### Stage 2 — LLM generation (`generate_content`)
+### Stage 2 — LLM generation (`generate_summary` + `generate_script`)
 
-Makes two separate chat completion calls:
+Makes two separate chat completion calls, each using its own independently configured client and model:
 
-**Call 1 — Markdown summary.** The transcript (truncated to 14,000 characters if needed) is sent to the LLM using the summary system prompt, which instructs it to produce a structured markdown document covering an overview, major topics, key takeaways, and notable quotes.
+**Call 1 — Markdown summary (`generate_summary`).** The transcript (truncated to 14,000 characters if needed) is sent to the LLM using the summary system prompt, which instructs it to produce a structured markdown document covering an overview, major topics, key takeaways, and notable quotes. Uses the `--summary-*` client settings, falling back to the base `--llm-*` config.
 
-**Call 2 — Podcast script.** The same transcript excerpt is sent again using a script system prompt chosen based on `--hosts`:
-- In `--hosts 2` mode, the dialogue prompt instructs the LLM to write a back-and-forth conversation between two named hosts — Alex (analytical, detail-oriented) and Jordan (curious, big-picture) — formatted as `[ALEX]: ...` and `[JORDAN]: ...` lines.
-- In `--hosts 1` mode, the monologue prompt instructs the LLM to write a flowing solo narration formatted as `[HOST]: ...` paragraphs.
+**Call 2 — Podcast script (`generate_script`).** The same transcript excerpt is sent using a script system prompt chosen based on `--hosts`. The host names from `--host1-name` and `--host2-name` are substituted into the prompt via `{host1_name}` / `{host2_name}` placeholders before the call is made:
+- In `--hosts 2` mode, the dialogue prompt produces a back-and-forth conversation formatted as `[host1_name]: ...` and `[host2_name]: ...` lines.
+- In `--hosts 1` mode, the monologue prompt produces a flowing solo narration formatted as `[host1_name]: ...` paragraphs.
 
-The raw LLM output is then parsed line-by-line into a list of `(speaker, text)` tuples for the TTS stage.
+The raw LLM output is parsed line-by-line using the configured host names as speaker tags, producing a list of `(speaker, text)` tuples for the TTS stage. Uses the `--script-*` client settings, falling back to the base `--llm-*` config.
 
-The LLM client is built from the `openai` Python library with a configurable `base_url` and `api_key`, making it compatible with any OpenAI-compatible provider (OpenRouter, Ollama, Groq, etc.).
-
-**Prompt loading (`load_prompt`).** Before each run, the three system prompts are resolved by `load_prompt()` using a three-level priority chain: a CLI-supplied file (e.g. `--dialogue-prompt`) takes precedence, followed by the corresponding file in the `prompts/` folder next to the script, followed by the hardcoded fallback string embedded in `podslacker.py`. This ensures the script always works out of the box while making every prompt trivially editable.
+**Prompt loading (`load_prompt`).** Before each run, all four system prompts are resolved by `load_prompt()` using a three-level priority chain: a CLI-supplied file (e.g. `--dialogue-prompt`) takes precedence, followed by the corresponding file in the `prompts/` folder next to the script, followed by the hardcoded fallback string embedded in `podslacker.py`. This ensures the script always works out of the box while making every prompt trivially editable.
 
 ### Stage 3 — Markdown output (`build_markdown`)
 
@@ -619,3 +724,11 @@ This optional stage (disabled with `--num-frames 0`) runs after audio generation
 **`capture_frames`.** Opens the stream URL as a `cv2.VideoCapture` object, seeks to each timestamp using `cv2.CAP_PROP_POS_MSEC`, and writes the decoded frame as a JPEG at 92% quality. Frames are named sequentially — `<video_id>_frame_01.jpg`, `_frame_02.jpg`, etc. — and saved to the same `outputs/` directory as all other files. The capture object is always released in a `finally` block even if an individual frame fails.
 
 **Why stream-only (no download).** Downloading a full video just to extract a few frames wastes bandwidth and storage. yt-dlp's stream URL approach lets OpenCV seek directly to any position in the remote file using HTTP range requests, so frames are captured in seconds with no temporary video file on disk.
+
+### Stage 6 — HTML page generation (`generate_page`, `publish_to_github`)
+
+This stage (skipped with `--no-page`) produces a single self-contained `.html` file that packages everything into one shareable document.
+
+**`generate_page`.** Reads the summary markdown, any captured JPEG frames, and the audio file. The markdown is rendered to HTML using the `markdown` Python package (falling back to escaped plain text if the package isn't installed). Audio and images are base64-encoded and embedded directly into the HTML, so the page has no external dependencies and opens in any browser without a web server. The visual design is a dark-themed responsive layout with: a rendered prose section for the summary, a CSS grid gallery for the key-moment frames, and a custom audio player pinned to the bottom of the viewport. The player has a play/pause button, a seekable progress bar, and a live time display. The spacebar toggles playback.
+
+**`publish_to_github`.** When `--publish-github` is set, this function uploads the generated page to a GitHub repository using the GitHub REST API. It authenticates with a Personal Access Token, creates the target repository if it doesn't exist (set to public, auto-initialised), creates the `gh-pages` branch if needed (from the default branch), then creates or updates the file using a PUT to the Contents API. Finally, it enables GitHub Pages on the repository if it hasn't been configured yet. The returned URL follows the pattern `https://<username>.github.io/<repo>/<video_id>_page.html`.

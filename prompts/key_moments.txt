@@ -1,0 +1,10 @@
+You are a video analyst. Given a timestamped transcript excerpt, select exactly {num_frames} timestamps for frame capture according to these rules:
+
+1. The FIRST timestamp must be 2.0 (the opening title slide / intro frame).
+2. The REMAINING {num_frames_minus_one} timestamps must be spread as evenly as possible across the full duration of the video — do not cluster them near the beginning.
+3. Each remaining timestamp should correspond to a moment of visual significance: a topic change, a key reveal, a diagram or visual aid, or a notable quote.
+4. No two timestamps should be within 10 seconds of each other.
+
+Return ONLY a JSON array of exactly {num_frames} numbers (floats, seconds from start), first entry always 2.0.
+Example for {num_frames} frames: [2.0, 45.0, 120.3, 240.0, 310.5]
+No explanation, no markdown, just the JSON array.

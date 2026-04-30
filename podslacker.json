@@ -7,7 +7,7 @@
   "host2_name": "JORDAN",
   "no_audio": false,
   "reuse_summary": false,
-  "num_frames": 5,
+  "num_frames": 6,
 
   "cookies": null,
   "proxy": null,
@@ -41,5 +41,11 @@
   "kokoro_voice_host1": "am_michael",
   "kokoro_voice_host2": "af_heart",
   "kokoro_lang": "a",
-  "kokoro_speed": 1.0
+  "kokoro_speed": 1.0,
+
+  "no_page": false,
+  "publish_github": false,
+  "github_repo": "podslacker-pages",
+  "github_token_env": "GITHUB_TOKEN",
+  "github_branch": "gh-pages"
 }

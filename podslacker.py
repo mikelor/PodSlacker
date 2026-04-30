@@ -103,6 +103,7 @@ def load_config(path: Path) -> dict:
         "key_moments_model", "key_moments_base_url", "key_moments_api_key_env",
         "tts_engine", "tts_model", "tts_api_key_env", "voice_host1", "voice_host2",
         "kokoro_voice_host1", "kokoro_voice_host2", "kokoro_lang", "kokoro_speed",
+        "no_page", "publish_github", "github_repo", "github_token_env", "github_branch",
     }
 
     result = {}
@@ -132,6 +133,65 @@ def get_video_id(url: str) -> str:
         if match:
             return match.group(1)
     raise ValueError(f"Could not extract a video ID from URL: {url!r}")
+
+
+def fetch_video_title(url: str) -> str | None:
+    """Fetch the video title, trying two methods in order:
+
+    1. YouTube oEmbed API — fast, no extra dependencies, no API key needed.
+    2. yt-dlp metadata extraction — used as a fallback if oEmbed fails.
+
+    Returns the title string, or None if both methods fail.  Warnings are
+    printed so failures are visible rather than silently swallowed.
+    """
+    import requests
+
+    # --- Method 1: oEmbed (fast, no extra dependencies) ---
+    try:
+        resp = requests.get(
+            "https://www.youtube.com/oembed",
+            params={"url": url, "format": "json"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        title = resp.json().get("title")
+        if title:
+            return title
+    except Exception as exc:
+        print(f"   ⚠️   oEmbed title fetch failed ({type(exc).__name__}: {exc}) — trying yt-dlp…")
+
+    # --- Method 2: yt-dlp fallback ---
+    try:
+        import yt_dlp  # type: ignore
+        ydl_opts = {"quiet": True, "no_warnings": True, "skip_download": True}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            title = (info or {}).get("title")
+            if title:
+                return title
+    except Exception as exc:
+        print(f"   ⚠️   yt-dlp title fetch failed ({type(exc).__name__}: {exc})")
+
+    return None
+
+
+def sanitize_title(title: str, max_len: int = 50) -> str:
+    """Convert a video title to a filesystem-safe slug.
+
+    Lowercases the title, strips characters that are not alphanumeric,
+    spaces, or hyphens, collapses runs of whitespace/hyphens to a single
+    underscore, trims leading/trailing underscores, and truncates to
+    max_len characters.
+
+    Examples:
+        "My Great Video! (2024)"  →  "my_great_video_2024"
+        "AI & ML: What's Next?"   →  "ai_ml_whats_next"
+    """
+    slug = title.lower()
+    slug = re.sub(r"[^\w\s-]", "", slug)        # keep alphanumeric, spaces, hyphens
+    slug = re.sub(r"[\s\-]+", "_", slug)         # collapse whitespace/hyphens → _
+    slug = slug.strip("_")[:max_len].rstrip("_") # trim and truncate
+    return slug or "untitled"
 
 
 def fetch_transcript(
@@ -622,9 +682,16 @@ def parse_dialogue_from_markdown(md_path: Path) -> tuple[str, list[tuple[str, st
     return summary, segments
 
 
-def build_markdown(url: str, video_id: str, summary: str, segments: list[tuple[str, str]]) -> str:
+def build_markdown(
+    url: str,
+    video_id: str,
+    summary: str,
+    segments: list[tuple[str, str]],
+    title: str | None = None,
+) -> str:
+    heading = f"# {title}" if title else "# YouTube Video Summary"
     lines = [
-        f"# YouTube Video Summary",
+        heading,
         f"",
         f"**Source:** {url}  ",
         f"**Video ID:** `{video_id}`",
@@ -682,13 +749,16 @@ def identify_key_moments(
     transcript_excerpt = "\n".join(sampled)
     total_duration = timed_entries[-1][0] if timed_entries else 0
 
-    # Substitute {num_frames} placeholder so the prompt file can reference it.
+    # Substitute placeholders so the prompt file can reference frame counts.
     try:
-        system = system_prompt.format(num_frames=num_frames)
+        system = system_prompt.format(
+            num_frames=num_frames,
+            num_frames_minus_one=max(num_frames - 1, 0),
+        )
     except KeyError as exc:
         raise RuntimeError(
             f"Key moments prompt contains an unknown placeholder: {exc}. "
-            "Only {{num_frames}} is supported."
+            "Supported placeholders: {{num_frames}}, {{num_frames_minus_one}}"
         )
 
     user_msg = (
@@ -831,6 +901,507 @@ def capture_frames(
 
 
 # ---------------------------------------------------------------------------
+# HTML page generation
+# ---------------------------------------------------------------------------
+
+_PAGE_CSS = """\
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:      #0d1117;
+  --surface: #161b22;
+  --border:  #30363d;
+  --accent:  #58a6ff;
+  --text:    #e6edf3;
+  --muted:   #8b949e;
+  --code-bg: #1e2433;
+  --radius:  10px;
+  --ph:      72px;
+}
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.75;
+}
+body.has-player { padding-bottom: calc(var(--ph) + 8px); }
+.page-header {
+  background: linear-gradient(135deg, #1a1f35 0%, #0d1117 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 36px 24px;
+  text-align: center;
+}
+.page-header h1 { font-size: clamp(1.4rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -0.02em; }
+.vid-badge { display: inline-block; margin-top: 6px; font-size: 0.75rem; color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
+.vid-badge a { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
+.vid-badge a:hover { opacity: .8; }
+.source-link {
+  display: inline-block; margin-top: 14px; padding: 6px 16px;
+  background: rgba(88,166,255,.1); color: var(--accent);
+  border: 1px solid rgba(88,166,255,.3); border-radius: 20px;
+  font-size: 0.84rem; text-decoration: none; transition: background .2s;
+}
+.source-link:hover { background: rgba(88,166,255,.2); }
+.content { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+.section { margin-bottom: 48px; }
+.section-heading {
+  font-size: 0.75rem; font-weight: 600; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .1em;
+  margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.prose h1, .prose h2, .prose h3, .prose h4 { font-weight: 600; line-height: 1.3; margin: 1.5em 0 .5em; color: var(--text); }
+.prose h1 { font-size: 1.7rem; }
+.prose h2 { font-size: 1.3rem; color: var(--accent); }
+.prose h3 { font-size: 1.1rem; }
+.prose p { margin-bottom: 1em; }
+.prose ul, .prose ol { padding-left: 1.6em; margin-bottom: 1em; }
+.prose li { margin-bottom: .3em; }
+.prose strong { font-weight: 600; }
+.prose code { font-family: "SF Mono", Consolas, monospace; font-size: .875em; background: var(--code-bg); padding: .15em .4em; border-radius: 4px; color: #79c0ff; }
+.prose pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; overflow-x: auto; margin-bottom: 1em; }
+.prose pre code { background: none; padding: 0; }
+.prose blockquote { border-left: 3px solid var(--accent); padding: 8px 16px; margin: 0 0 1em; color: var(--muted); background: rgba(88,166,255,.06); border-radius: 0 4px 4px 0; }
+.prose table { width: 100%; border-collapse: collapse; margin-bottom: 1em; font-size: .9em; }
+.prose th, .prose td { padding: 8px 12px; border: 1px solid var(--border); text-align: left; }
+.prose th { background: var(--surface); font-weight: 600; }
+.prose tr:nth-child(even) { background: rgba(255,255,255,.02); }
+.prose a { color: var(--accent); text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
+.prose hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+.md-fallback { white-space: pre-wrap; font-size: .88em; color: var(--muted); }
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.gal-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color .2s, transform .2s; }
+.gal-item:hover { border-color: var(--accent); transform: translateY(-2px); }
+.gal-item img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; cursor: zoom-in; }
+.gal-item figcaption { padding: 6px 10px; font-size: .72rem; color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
+.transcript-details { margin-top: 8px; }
+.transcript-summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; padding: 8px 0; list-style: none; user-select: none; }
+.transcript-summary::-webkit-details-marker { display: none; }
+.transcript-summary::marker { display: none; }
+.transcript-summary::before { content: "▶ "; font-size: .7em; }
+details[open] .transcript-summary::before { content: "▼ "; }
+.transcript-body { margin-top: 12px; display: flex; flex-direction: column; gap: 3px; max-height: 420px; overflow-y: auto; padding: 14px 16px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.ts-line { font-size: .875rem; line-height: 1.55; color: var(--text); }
+.ts-link { color: var(--accent); text-decoration: none; font-family: "SF Mono", Consolas, monospace; font-size: .8rem; }
+.ts-link:hover { text-decoration: underline; }
+.lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 2000; align-items: center; justify-content: center; cursor: zoom-out; }
+.lightbox.open { display: flex; }
+.lightbox img { max-width: 92vw; max-height: 88vh; object-fit: contain; border-radius: var(--radius); box-shadow: 0 8px 48px rgba(0,0,0,.7); }
+.lightbox-close { position: absolute; top: 16px; right: 20px; font-size: 2rem; color: #fff; cursor: pointer; line-height: 1; opacity: .7; transition: opacity .15s; }
+.lightbox-close:hover { opacity: 1; }
+.player { position: fixed; bottom: 0; left: 0; right: 0; height: var(--ph); background: rgba(13,17,23,.93); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border); z-index: 1000; }
+.player-inner { max-width: 860px; margin: 0 auto; height: 100%; display: flex; align-items: center; gap: 14px; padding: 0 24px; }
+.play-btn { flex-shrink: 0; width: 42px; height: 42px; border-radius: 50%; background: var(--accent); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #0d1117; transition: background .15s, transform .1s; }
+.play-btn:hover { background: #79bbff; }
+.play-btn:active { transform: scale(.94); }
+.track-meta { flex-shrink: 0; max-width: 200px; overflow: hidden; }
+.track-name { font-size: .78rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: "SF Mono", Consolas, monospace; }
+.seek-wrap { flex: 1; display: flex; align-items: center; gap: 10px; }
+.time-lbl { font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; min-width: 34px; font-family: "SF Mono", Consolas, monospace; }
+.seek-bar { flex: 1; -webkit-appearance: none; appearance: none; height: 4px; border-radius: 2px; background: var(--border); cursor: pointer; outline: none; }
+.seek-bar::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); cursor: pointer; transition: transform .1s; }
+.seek-bar:hover::-webkit-slider-thumb { transform: scale(1.3); }
+.seek-bar::-moz-range-thumb { width: 14px; height: 14px; border: none; border-radius: 50%; background: var(--accent); cursor: pointer; }
+@media (max-width: 600px) {
+  .track-meta { display: none; }
+  .page-header { padding: 20px 16px; }
+  .content { padding: 20px 16px; }
+}"""
+
+_PAGE_JS = """\
+(function () {
+  var audio = document.getElementById('audioEl');
+  if (!audio) return;
+  var playBtn   = document.getElementById('playBtn');
+  var seekBar   = document.getElementById('seekBar');
+  var curTime   = document.getElementById('currentTime');
+  var totTime   = document.getElementById('totalTime');
+  var iconPlay  = document.getElementById('iconPlay');
+  var iconPause = document.getElementById('iconPause');
+  function fmt(s) {
+    if (isNaN(s) || !isFinite(s)) return '0:00';
+    var m = Math.floor(s / 60), sec = Math.floor(s % 60);
+    return m + ':' + (sec < 10 ? '0' : '') + sec;
+  }
+  playBtn.addEventListener('click', function () {
+    audio.paused ? audio.play() : audio.pause();
+  });
+  audio.addEventListener('play', function () {
+    iconPlay.setAttribute('hidden', '');
+    iconPause.removeAttribute('hidden');
+  });
+  audio.addEventListener('pause', function () {
+    iconPlay.removeAttribute('hidden');
+    iconPause.setAttribute('hidden', '');
+  });
+  audio.addEventListener('ended', function () {
+    iconPlay.removeAttribute('hidden');
+    iconPause.setAttribute('hidden', '');
+    seekBar.value = 0;
+    curTime.textContent = '0:00';
+  });
+  audio.addEventListener('loadedmetadata', function () {
+    totTime.textContent = fmt(audio.duration);
+  });
+  audio.addEventListener('timeupdate', function () {
+    if (!audio.duration) return;
+    seekBar.value = (audio.currentTime / audio.duration) * 100;
+    curTime.textContent = fmt(audio.currentTime);
+  });
+  seekBar.addEventListener('input', function () {
+    if (audio.duration) audio.currentTime = (seekBar.value / 100) * audio.duration;
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      audio.paused ? audio.play() : audio.pause();
+    }
+  });
+}());
+
+(function () {
+  var lb    = document.getElementById('lightbox');
+  var lbImg = document.getElementById('lightboxImg');
+  if (!lb) return;
+
+  function open(src) { lbImg.src = src; lb.classList.add('open'); }
+  function close()   { lb.classList.remove('open'); lbImg.src = ''; }
+
+  document.querySelectorAll('.gal-item img').forEach(function (img) {
+    img.addEventListener('click', function () { open(img.src); });
+  });
+
+  lb.addEventListener('click', function (e) {
+    if (e.target === lb || e.target.classList.contains('lightbox-close')) close();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') close();
+  });
+}());
+"""
+
+
+def generate_page(
+    video_id: str,
+    url: str,
+    output_dir: Path,
+    audio_path: Path | None = None,
+    image_paths: list[Path] | None = None,
+    md_path: Path | None = None,
+    title: str | None = None,
+    base_name: str | None = None,
+    transcript_path: Path | None = None,
+) -> Path:
+    """Generate a self-contained HTML page bundling the summary, images, and audio.
+
+    All assets (audio and images) are base64-embedded, making the page fully
+    portable — no web server or external dependencies required.  Missing assets
+    are handled gracefully: sections are omitted when files don't exist.
+
+    Returns the path to the saved HTML file.
+    """
+    import base64
+    import html as _html
+
+    # --- Render summary markdown ---
+    summary_html = ""
+    if md_path and md_path.exists():
+        raw_md = md_path.read_text(encoding="utf-8")
+        try:
+            import markdown as md_lib
+            summary_html = md_lib.markdown(raw_md, extensions=["tables", "fenced_code"])
+        except ImportError:
+            summary_html = f'<pre class="md-fallback">{_html.escape(raw_md)}</pre>'
+
+    # --- Embed audio ---
+    audio_element = ""
+    audio_fname = ""
+    has_audio = False
+    if audio_path and audio_path.exists():
+        audio_b64 = base64.b64encode(audio_path.read_bytes()).decode("ascii")
+        audio_mime = "audio/wav" if audio_path.suffix.lower() == ".wav" else "audio/mpeg"
+        audio_fname = _html.escape(audio_path.name)
+        audio_element = (
+            f'<audio id="audioEl" preload="metadata">'
+            f'<source src="data:{audio_mime};base64,{audio_b64}" type="{audio_mime}">'
+            f'</audio>'
+        )
+        has_audio = True
+
+    # --- Embed images ---
+    gallery_section = ""
+    if image_paths:
+        gal_items = []
+        for img_path in image_paths:
+            if img_path.exists():
+                img_b64 = base64.b64encode(img_path.read_bytes()).decode("ascii")
+                fname = _html.escape(img_path.name)
+                gal_items.append(
+                    f'<figure class="gal-item">'
+                    f'<img src="data:image/jpeg;base64,{img_b64}" alt="{fname}" loading="lazy">'
+                    f'<figcaption>{fname}</figcaption>'
+                    f'</figure>'
+                )
+        if gal_items:
+            gallery_section = (
+                '\n<section class="section">'
+                '\n<h2 class="section-heading">Key Moments</h2>'
+                '\n<div class="gallery">\n'
+                + "\n".join(gal_items)
+                + '\n</div>\n</section>'
+            )
+
+    # --- Build transcript section with clickable timestamps ---
+    transcript_section = ""
+    if transcript_path and transcript_path.exists():
+        ts_pattern = re.compile(r"^\[(\d{2}):(\d{2})\]\s*(.*)")
+        ts_items = []
+        for line in transcript_path.read_text(encoding="utf-8").splitlines():
+            m = ts_pattern.match(line.strip())
+            if m:
+                mins, secs, text = int(m.group(1)), int(m.group(2)), m.group(3).strip()
+                total_secs = mins * 60 + secs
+                yt_ts_url = f"https://www.youtube.com/watch?v={video_id}&t={total_secs}"
+                ts_items.append(
+                    f'<span class="ts-line">'
+                    f'<a class="ts-link" href="{_html.escape(yt_ts_url)}"'
+                    f' target="podslacker-yt" rel="noopener">[{mins:02d}:{secs:02d}]</a>'
+                    f' {_html.escape(text)}'
+                    f'</span>'
+                )
+        if ts_items:
+            transcript_section = (
+                '\n<section class="section">'
+                '\n<details class="transcript-details">'
+                '\n<summary class="transcript-summary">'
+                'To see the full transcript, click here'
+                '</summary>'
+                '\n<div class="transcript-body">\n'
+                + "\n".join(ts_items)
+                + '\n</div>\n</details>\n</section>'
+            )
+
+    # --- Audio player markup ---
+    player_block = ""
+    if has_audio:
+        player_block = (
+            '\n<div class="player">'
+            '\n  <div class="player-inner">'
+            '\n    <button class="play-btn" id="playBtn"'
+            ' aria-label="Play / Pause" title="Play / Pause (Space)">'
+            '\n      <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor"'
+            ' width="24" height="24"><path d="M8 5v14l11-7z"/></svg>'
+            '\n      <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor"'
+            ' width="24" height="24" hidden>'
+            '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>'
+            '\n    </button>'
+            f'\n    <div class="track-meta">'
+            f'<span class="track-name">{audio_fname}</span></div>'
+            '\n    <div class="seek-wrap">'
+            '\n      <span class="time-lbl" id="currentTime">0:00</span>'
+            '\n      <input type="range" id="seekBar" class="seek-bar"'
+            ' min="0" max="100" step="0.1" value="0">'
+            '\n      <span class="time-lbl" id="totalTime">0:00</span>'
+            '\n    </div>'
+            '\n  </div>'
+            f'\n  {audio_element}'
+            '\n</div>'
+        )
+
+    url_esc = _html.escape(url)
+    vid_esc = _html.escape(video_id)
+    title_esc = _html.escape(title) if title else None
+    body_attrs = ' class="has-player"' if has_audio else ""
+    ps_link = '<a href="https://podslacker.com" target="_blank" rel="noopener">PodSlacker</a>'
+    page_title_tag = f"PodSlacker — {title_esc or vid_esc}"
+    header_h1 = title_esc or f"Created with {ps_link}"
+    header_sub = (
+        f'  <div class="vid-badge">{vid_esc}</div><br>\n'
+        if not title_esc
+        else f'  <div class="vid-badge">Created with {ps_link} &nbsp;·&nbsp; {vid_esc}</div><br>\n'
+    )
+
+    parts = [
+        "<!DOCTYPE html>\n",
+        '<html lang="en">\n<head>\n',
+        '<meta charset="UTF-8">\n',
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n',
+        f"<title>{page_title_tag}</title>\n",
+        "<style>\n",
+        _PAGE_CSS,
+        "\n</style>\n</head>\n",
+        f"<body{body_attrs}>\n\n",
+        '<header class="page-header">\n',
+        f"  <h1>{header_h1}</h1>\n",
+        header_sub,
+        f'  <a class="source-link" href="{url_esc}" target="_blank"'
+        f' rel="noopener">Watch on YouTube &#8599;</a>\n',
+        "</header>\n\n",
+        '<div class="content">\n',
+        gallery_section,
+        '\n<section class="section">\n',
+        '<h2 class="section-heading">Summary &amp; Script</h2>\n',
+        f'<div class="prose">{summary_html}</div>\n',
+        "</section>",
+        transcript_section,
+        "\n</div>\n",
+        player_block,
+        '\n\n<div id="lightbox" class="lightbox" role="dialog" aria-modal="true">'
+        '<span class="lightbox-close" aria-label="Close">&times;</span>'
+        '<img id="lightboxImg" src="" alt="Full size frame">'
+        '</div>',
+        "\n\n<script>\n",
+        _PAGE_JS,
+        "</script>\n\n</body>\n</html>\n",
+    ]
+
+    page_path = output_dir / f"{base_name or video_id}_page.html"
+    page_path.write_text("".join(parts), encoding="utf-8")
+    return page_path
+
+
+# ---------------------------------------------------------------------------
+# GitHub Pages publishing
+# ---------------------------------------------------------------------------
+
+def publish_to_github(
+    page_path: Path,
+    repo_name: str = "podslacker-pages",
+    token_env: str = "GITHUB_TOKEN",
+    branch: str = "gh-pages",
+) -> str:
+    """Upload an HTML page to GitHub Pages using the GitHub REST API.
+
+    Creates the repository if it doesn't exist (public, auto-initialised).
+    Creates the target branch if it doesn't exist (from the default branch).
+    Creates or updates the page file, then enables GitHub Pages if needed.
+
+    Returns the public GitHub Pages URL for the uploaded page.
+    Raises RuntimeError on any unrecoverable API failure.
+    """
+    import base64
+    import time
+    import requests as _req
+
+    token = os.environ.get(token_env)
+    if not token:
+        raise RuntimeError(
+            f"GitHub token not found. Set '{token_env}' to a Personal Access Token "
+            "with 'repo' and 'pages' scopes. "
+            "Create one at: https://github.com/settings/tokens"
+        )
+
+    hdrs = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    api = "https://api.github.com"
+
+    def _get(path: str, **kw):
+        return _req.get(f"{api}{path}", headers=hdrs, timeout=15, **kw)
+
+    def _post(path: str, **kw):
+        return _req.post(f"{api}{path}", headers=hdrs, timeout=15, **kw)
+
+    def _put(path: str, **kw):
+        return _req.put(f"{api}{path}", headers=hdrs, timeout=30, **kw)
+
+    # 1. Authenticate
+    me = _get("/user")
+    me.raise_for_status()
+    username = me.json()["login"]
+    print(f"   Authenticated as: {username}")
+
+    # 2. Create repo if needed
+    repo_check = _get(f"/repos/{username}/{repo_name}")
+    if repo_check.status_code == 404:
+        print(f"   Creating repository '{repo_name}'…")
+        r = _post(
+            "/user/repos",
+            json={
+                "name": repo_name,
+                "description": "PodSlacker generated podcast pages",
+                "private": False,
+                "auto_init": True,
+            },
+        )
+        r.raise_for_status()
+        print(f"   ✓ Repository created: github.com/{username}/{repo_name}")
+        time.sleep(2)  # let GitHub finish initialising
+    else:
+        repo_check.raise_for_status()
+        print(f"   ✓ Repository: github.com/{username}/{repo_name}")
+
+    # 3. Get default branch
+    repo_info = _get(f"/repos/{username}/{repo_name}")
+    repo_info.raise_for_status()
+    default_branch = repo_info.json().get("default_branch", "main")
+
+    # 4. Ensure the publish branch exists
+    branch_check = _get(f"/repos/{username}/{repo_name}/branches/{branch}")
+    if branch_check.status_code == 404:
+        ref_r = _get(f"/repos/{username}/{repo_name}/git/ref/heads/{default_branch}")
+        ref_r.raise_for_status()
+        sha = ref_r.json()["object"]["sha"]
+        cb = _post(
+            f"/repos/{username}/{repo_name}/git/refs",
+            json={"ref": f"refs/heads/{branch}", "sha": sha},
+        )
+        cb.raise_for_status()
+        print(f"   ✓ Created branch: {branch}")
+    else:
+        branch_check.raise_for_status()
+        print(f"   ✓ Branch: {branch}")
+
+    # 5. Create or update the file
+    filename = page_path.name
+    file_content_b64 = base64.b64encode(page_path.read_bytes()).decode("ascii")
+    file_api_path = f"/repos/{username}/{repo_name}/contents/{filename}"
+
+    existing = _get(file_api_path, params={"ref": branch})
+    put_body: dict = {
+        "message": f"Update {filename} via podslacker",
+        "content": file_content_b64,
+        "branch": branch,
+    }
+    if existing.status_code == 200:
+        put_body["sha"] = existing.json()["sha"]
+        action = "Updating"
+    else:
+        action = "Uploading"
+    print(f"   {action} {filename}…")
+    put_r = _put(file_api_path, json=put_body)
+    put_r.raise_for_status()
+    print(f"   ✓ File published to branch '{branch}'")
+
+    # 6. Enable GitHub Pages if not already configured
+    pages_check = _get(f"/repos/{username}/{repo_name}/pages")
+    if pages_check.status_code == 404:
+        enable_r = _post(
+            f"/repos/{username}/{repo_name}/pages",
+            json={"source": {"branch": branch, "path": "/"}},
+        )
+        if enable_r.status_code in (201, 204):
+            print("   ✓ GitHub Pages enabled")
+        else:
+            print(
+                f"   ⚠️  Could not enable GitHub Pages automatically "
+                f"(HTTP {enable_r.status_code})."
+            )
+            print(
+                f"      Visit https://github.com/{username}/{repo_name}/settings/pages "
+                f"and set the source to branch '{branch}'."
+            )
+    else:
+        print("   ✓ GitHub Pages already enabled")
+
+    return f"https://{username}.github.io/{repo_name}/{filename}"
+
+
+# ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
 
@@ -952,7 +1523,7 @@ def main() -> None:
     parser.add_argument(
         "--num-frames",
         type=int,
-        default=5,
+        default=6,
         metavar="N",
         help=(
             "Number of key-moment frames to capture from the video and save as JPEGs. "
@@ -1179,6 +1750,54 @@ def main() -> None:
         help="Speech rate multiplier for Kokoro. Default: 1.0 (normal speed). Try 1.1 for slightly faster delivery.",
     )
 
+    # ---- HTML page & GitHub Pages ----
+    page_group = parser.add_argument_group(
+        "HTML page & GitHub Pages",
+        "Controls generation and optional publishing of a self-contained HTML podcast page.",
+    )
+    page_group.add_argument(
+        "--no-page",
+        action="store_true",
+        help=(
+            "Skip HTML page generation. By default podslacker produces a self-contained "
+            "<video_id>_page.html file in --output-dir that embeds the summary, "
+            "key-moment images, and audio player in one portable file."
+        ),
+    )
+    page_group.add_argument(
+        "--publish-github",
+        action="store_true",
+        help=(
+            "Publish the generated HTML page to GitHub Pages. "
+            "Requires a GitHub Personal Access Token (with 'repo' and 'pages' scopes) "
+            "stored in the env var named by --github-token-env."
+        ),
+    )
+    page_group.add_argument(
+        "--github-repo",
+        default="podslacker-pages",
+        metavar="REPO",
+        help=(
+            "GitHub repository name to publish pages to. "
+            "Created automatically if it doesn't exist. Default: podslacker-pages"
+        ),
+    )
+    page_group.add_argument(
+        "--github-token-env",
+        default="GITHUB_TOKEN",
+        metavar="VAR",
+        help=(
+            "Name of the environment variable that holds the GitHub Personal Access Token. "
+            "Default: GITHUB_TOKEN"
+        ),
+    )
+    page_group.add_argument(
+        "--github-branch",
+        default="gh-pages",
+        metavar="BRANCH",
+        help="Branch in the GitHub repository to publish to. Default: gh-pages",
+    )
+
     # ---- Config file ----
     parser.add_argument(
         "--config",
@@ -1255,13 +1874,22 @@ def main() -> None:
         print(f"   ✗ {exc}")
         sys.exit(1)
 
-    transcript_path = output_dir / f"{video_id}_transcript.md"
+    # Fetch the human-readable video title and build a descriptive file prefix.
+    video_title = fetch_video_title(args.url)
+    if video_title:
+        print(f"   ✓ Title: {video_title}")
+        base_name = f"{sanitize_title(video_title)}_{video_id}"
+    else:
+        print("   ⚠️   Could not fetch video title — using video ID only.")
+        base_name = video_id
+
+    transcript_path = output_dir / f"{base_name}_transcript.md"
     timestamped_lines = []
     for start, text in timed_entries:
         mins, secs = divmod(int(start), 60)
         timestamped_lines.append(f"[{mins:02d}:{secs:02d}] {text.strip()}")
     transcript_md = (
-        f"# Transcript\n\n"
+        f"# Transcript{': ' + video_title if video_title else ''}\n\n"
         f"**Source:** {args.url}  \n"
         f"**Video ID:** `{video_id}`\n\n"
         f"---\n\n"
@@ -1272,7 +1900,7 @@ def main() -> None:
     print(f"   ✓ Transcript saved → {transcript_path}")
 
     # ---- Step 2: AI content (or load from cache) ----
-    md_path = output_dir / f"{video_id}_summary.md"
+    md_path = output_dir / f"{base_name}_summary.md"
 
     if args.reuse_summary and md_path.exists():
         print(f"\n📋  Reusing existing summary: {md_path}")
@@ -1323,14 +1951,20 @@ def main() -> None:
             sys.exit(1)
 
         # ---- Step 3: Save markdown ----
-        md_content = build_markdown(args.url, video_id, markdown_summary, dialogue_segments)
+        md_content = build_markdown(
+            args.url, video_id, markdown_summary, dialogue_segments, title=video_title
+        )
         md_path.write_text(md_content, encoding="utf-8")
         print(f"\n📄  Markdown saved → {md_path}")
+
+    # Initialise output-tracking variables used in Step 6
+    audio_path: Path | None = None
+    saved_frames: list[Path] = []
 
     # ---- Step 4: Audio ----
     if not args.no_audio:
         if args.tts_engine == "kokoro":
-            audio_path = output_dir / f"{video_id}_podcast.wav"
+            audio_path = output_dir / f"{base_name}_podcast.wav"
             print(f"\n🎙️   Generating podcast audio  [Kokoro / local CPU]…")
             print(f"   Voices: {args.host1_name}={args.kokoro_voice_host1}, {args.host2_name}={args.kokoro_voice_host2}")
             try:
@@ -1349,7 +1983,7 @@ def main() -> None:
                 print(f"   ✗ Audio generation failed: {exc}")
                 sys.exit(1)
         else:
-            audio_path = output_dir / f"{video_id}_podcast.mp3"
+            audio_path = output_dir / f"{base_name}_podcast.mp3"
             print(f"\n🎙️   Generating podcast audio  [OpenAI TTS / {args.tts_model}]…")
             try:
                 generate_audio(
@@ -1404,7 +2038,7 @@ def main() -> None:
                 stream_url = None
 
             if stream_url:
-                saved_frames = capture_frames(stream_url, key_timestamps, output_dir, video_id)
+                saved_frames = capture_frames(stream_url, key_timestamps, output_dir, base_name)
                 if saved_frames:
                     print(f"\n🖼️   {len(saved_frames)} frame(s) saved → {output_dir}/")
                 else:
@@ -1415,6 +2049,46 @@ def main() -> None:
             print("     Continuing without frames.")
     elif args.num_frames == 0:
         print("\n⏭️   Frame capture skipped (--num-frames 0)")
+
+    # ---- Step 6: HTML page ----
+    if not args.no_page:
+        page_audio = audio_path if not args.no_audio and audio_path else None
+        page_images = saved_frames if saved_frames else None
+        print(f"\n🌐  Generating HTML page…")
+        page_path_out: Path | None = None
+        try:
+            page_path_out = generate_page(
+                video_id,
+                args.url,
+                output_dir,
+                audio_path=page_audio,
+                image_paths=page_images,
+                md_path=md_path,
+                title=video_title,
+                base_name=base_name,
+                transcript_path=transcript_path,
+            )
+            size_kb = page_path_out.stat().st_size // 1024
+            print(f"   ✓ Page saved → {page_path_out}  ({size_kb:,} KB)")
+        except Exception as exc:
+            print(f"   ✗ HTML page generation failed: {exc}")
+            print("     Continuing without page.")
+
+        if page_path_out and args.publish_github:
+            print(f"\n🚀  Publishing to GitHub Pages…")
+            try:
+                page_url = publish_to_github(
+                    page_path_out,
+                    repo_name=args.github_repo,
+                    token_env=args.github_token_env,
+                    branch=args.github_branch,
+                )
+                print(f"   ✓ Published → {page_url}")
+                print("      (Note: GitHub Pages may take a minute or two to go live.)")
+            except Exception as exc:
+                print(f"   ✗ GitHub Pages publish failed: {exc}")
+    else:
+        print("\n⏭️   HTML page skipped (--no-page)")
 
     print("\n✅  All done!\n")
 
