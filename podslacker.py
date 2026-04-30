@@ -465,63 +465,77 @@ def generate_script(
 # Audio generation
 # ---------------------------------------------------------------------------
 
-# A tiny valid silent MP3 frame used as a short pause between speaker turns.
-# This is a single 128kbps stereo frame of silence (~26ms), repeated to fill
-# roughly 0.5 s.  No ffmpeg required — we just concatenate raw MP3 bytes.
-_SILENT_MP3_FRAME = bytes([
-    0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-])
-_PAUSE_BYTES = _SILENT_MP3_FRAME * 20  # ~0.5 s of silence
+# ---------------------------------------------------------------------------
+# MP3 frame-level helpers
+# ---------------------------------------------------------------------------
+
+_MPEG_BITRATES_V1 = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320, 0]
+_MPEG_BITRATES_V2 = [0,  8, 16, 24, 32, 40, 48, 56,  64,  80,  96, 112, 128, 144, 160, 0]
+_MPEG_SR_TABLE    = {3: [44100, 48000, 32000, 0],
+                     2: [22050, 24000, 16000, 0],
+                     0: [11025, 12000,  8000, 0]}
+
+
+def _mp3_frame_size(hdr: int) -> int | None:
+    """Return the byte-length of the MPEG Layer-III frame described by *hdr*.
+
+    Returns None if the header is not a valid Layer-III frame or if the
+    bitrate / sample-rate index is reserved / free-format.
+
+    Key fix vs the original _strip_xing_header code: MPEG2 / MPEG2.5 frames
+    have 576 samples per frame (vs 1152 for MPEG1), so the multiplier is 72,
+    not 144.
+    """
+    version = (hdr >> 19) & 0x3
+    layer   = (hdr >> 17) & 0x3
+    if layer != 1:            # must be Layer III (binary 01)
+        return None
+    br_idx  = (hdr >> 12) & 0xF
+    sr_idx  = (hdr >> 10) & 0x3
+    padding = (hdr >>  9) & 0x1
+    bitrates = _MPEG_BITRATES_V1 if version == 3 else _MPEG_BITRATES_V2
+    br = bitrates[br_idx] * 1000
+    sr = _MPEG_SR_TABLE.get(version, _MPEG_SR_TABLE[3])[sr_idx]
+    if br == 0 or sr == 0:
+        return None
+    multiplier = 144 if version == 3 else 72   # MPEG1=1152 samp/fr / 8; MPEG2=576 / 8
+    return (multiplier * br // sr) + padding
+
+
+def _make_silence_frames(reference_mp3: bytes, n_frames: int) -> bytes:
+    """Build *n_frames* of silence whose MPEG format exactly matches *reference_mp3*.
+
+    Reads the header of the first valid MPEG Layer-III frame in *reference_mp3*
+    and generates *n_frames* zero-filled silent frames with the same version,
+    bitrate, sample rate, channel mode, and frame size.  This avoids the
+    browser audio-pipeline crash caused by mixing MPEG1/MPEG2 or mono/stereo
+    frames in the same stream.
+
+    Falls back to a hard-coded MPEG1 stereo 128 kbps 44100 Hz frame (417 bytes)
+    if the reference cannot be parsed.
+    """
+    FALLBACK_HDR  = bytes([0xFF, 0xFB, 0x90, 0x00])
+    FALLBACK_SIZE = 417
+
+    hdr_bytes = FALLBACK_HDR
+    frame_sz  = FALLBACK_SIZE
+
+    for i in range(min(len(reference_mp3) - 4, 4096)):
+        if reference_mp3[i] != 0xFF or (reference_mp3[i + 1] & 0xE0) != 0xE0:
+            continue
+        hdr_int = int.from_bytes(reference_mp3[i:i + 4], "big")
+        fs = _mp3_frame_size(hdr_int)
+        if fs and fs >= 10:
+            # Preserve version/layer/bitrate/samplerate/channel but clear the
+            # padding bit so that our fixed-size frame is always exactly fs bytes.
+            clean_hdr_int = hdr_int & ~(1 << 9)
+            hdr_bytes = clean_hdr_int.to_bytes(4, "big")
+            # Recompute size without padding
+            frame_sz = _mp3_frame_size(clean_hdr_int) or fs
+            break
+
+    silent_frame = hdr_bytes + bytes(frame_sz - 4)
+    return silent_frame * n_frames
 
 
 def generate_audio(
@@ -538,10 +552,17 @@ def generate_audio(
 
     Uses raw byte concatenation — no ffmpeg or pydub required.
     The client should be pointed at an OpenAI-compatible TTS endpoint.
+
+    Silence frames between speaker turns are generated by _make_silence_frames,
+    which reads the MPEG header from the first TTS segment and produces frames
+    that exactly match its format (version, bitrate, sample rate, channel mode).
+    This prevents the browser audio pipeline from choking on a format mismatch
+    between the speech audio and the silence padding.
     """
     voice_map = {host1_name: voice_host1, host2_name: voice_host2}
     total = len(segments)
     chunks: list[bytes] = []
+    pause_bytes: bytes | None = None   # built lazily from first segment
 
     for i, (speaker, text) in enumerate(segments, 1):
         print(f"   Segment {i}/{total}  [{speaker}]  \"{text[:60]}...\"")
@@ -552,9 +573,13 @@ def generate_audio(
             voice=voice,
             input=text,
         )
-        chunks.append(response.content)
+        seg_bytes = response.content
+        if pause_bytes is None:
+            # Build format-matched silence from the first real segment (~0.5 s)
+            pause_bytes = _make_silence_frames(seg_bytes, 20)
+        chunks.append(seg_bytes)
         if i < total:
-            chunks.append(_PAUSE_BYTES)
+            chunks.append(pause_bytes)
 
     output_path.write_bytes(b"".join(chunks))
 
@@ -852,13 +877,15 @@ def capture_frames(
     timestamps: list[float],
     output_dir: Path,
     video_id: str,
-) -> list[Path]:
+) -> list[tuple[Path, float]]:
     """Seek to each timestamp in the video stream and save a JPEG frame.
 
     Uses OpenCV (opencv-python-headless) to open the stream URL and seek to
     each position without downloading the full video.
 
-    Returns the list of saved JPEG paths.
+    Returns a list of (path, timestamp_seconds) pairs for successfully saved
+    frames.  Skipped frames are omitted, so the returned list may be shorter
+    than ``timestamps``.
     """
     try:
         import cv2  # type: ignore
@@ -874,7 +901,7 @@ def capture_frames(
             "The stream URL may have expired — try running again."
         )
 
-    saved: list[Path] = []
+    saved: list[tuple[Path, float]] = []
     total = len(timestamps)
 
     try:
@@ -891,7 +918,7 @@ def capture_frames(
             if ok:
                 mins, secs = divmod(int(ts), 60)
                 print(f"   ✓ Frame {i}/{total}  [{mins:02d}:{secs:02d}]  → {frame_path.name}")
-                saved.append(frame_path)
+                saved.append((frame_path, ts))
             else:
                 print(f"   ✗ Frame {i}/{total} at {ts:.1f}s — failed to write JPEG.")
     finally:
@@ -901,71 +928,107 @@ def capture_frames(
 
 
 # ---------------------------------------------------------------------------
+# Frame caption generation
+# ---------------------------------------------------------------------------
+
+def get_frame_captions(
+    timed_entries: list[tuple[float, str]],
+    timestamps: list[float],
+    window: float = 20.0,
+    max_chars: int = 110,
+) -> list[str]:
+    """Return a short caption for each timestamp drawn from nearby transcript text.
+
+    For each timestamp, collects transcript entries within ``window`` seconds
+    on either side, ordered by proximity, and concatenates them into a caption
+    of at most ``max_chars`` characters.  Falls back to the globally closest
+    entry if nothing falls within the window.
+    """
+    captions: list[str] = []
+    for ts in timestamps:
+        nearby = sorted(
+            ((abs(t - ts), txt) for t, txt in timed_entries if abs(t - ts) <= window),
+            key=lambda x: x[0],
+        )
+        if not nearby and timed_entries:
+            # Nothing within window — use the single closest entry
+            nearest = min(timed_entries, key=lambda x: abs(x[0] - ts))
+            nearby = [(abs(nearest[0] - ts), nearest[1])]
+
+        if nearby:
+            combined = " ".join(txt for _, txt in nearby)
+            combined = " ".join(combined.split())  # collapse whitespace
+            if len(combined) > max_chars:
+                combined = combined[:max_chars].rsplit(" ", 1)[0].rstrip(".,;:") + "…"
+            captions.append(combined)
+        else:
+            captions.append("")
+    return captions
+
+
+# ---------------------------------------------------------------------------
 # HTML page generation
 # ---------------------------------------------------------------------------
 
 def _strip_xing_header(data: bytes) -> bytes:
-    """Remove the Xing/Info/LAME VBR info frame from a concatenated MP3 stream.
+    """Walk the full MP3 stream and excise every Xing / Info / LAME VBR info frame.
 
-    OpenAI TTS returns each segment as its own MP3 file complete with a Xing
-    VBR header whose frame/byte counts describe only that one segment.  When
-    segments are concatenated the header is still present and still says the
-    stream ends after the first segment.  Standalone players are forgiving and
-    read past it; browsers stop exactly where the header says to.
+    When OpenAI TTS segments are concatenated each segment may contain its own
+    VBR info frame (Xing/LAME) mid-stream.  Each such frame carries a byte-count
+    / frame-count that reflects only that segment; browsers honour it and stop
+    playback at that point.  Standalone players are forgiving and skip past
+    these frames.
 
-    Removing the info frame (which is silent padding anyway) forces the browser
-    to scan all actual audio frames and play the full stream.  The .mp3 file
-    saved to disk is not affected — this is applied only when embedding audio
-    in the HTML page.
+    This function replaces the earlier single-frame approach with a full-stream
+    scan using the correct MPEG2 frame-size multiplier (72, not 144) so all
+    info frames are found and removed regardless of where they appear.
+
+    The .mp3 file saved to disk is NOT affected — this runs only when embedding
+    audio in the HTML page.
     """
-    for i in range(min(len(data) - 4, 1000)):
-        # Look for an MPEG frame sync word
-        if data[i] != 0xFF or (data[i + 1] & 0xE0) != 0xE0:
+    out: list[bytes] = []
+    pos = 0
+    total = len(data)
+    vbr_tags = (b"Xing", b"Info", b"LAME")
+    stripped = 0
+
+    while pos < total - 4:
+        # Sync scan
+        if data[pos] != 0xFF or (data[pos + 1] & 0xE0) != 0xE0:
+            out.append(data[pos:pos + 1])
+            pos += 1
             continue
 
-        hdr     = int.from_bytes(data[i:i + 4], "big")
-        version = (hdr >> 19) & 0x3  # 3=MPEG1, 2=MPEG2, 0=MPEG2.5
-        layer   = (hdr >> 17) & 0x3  # 1=Layer III (MP3)
-        ch_mode = (hdr >>  6) & 0x3  # 3=mono
+        hdr = int.from_bytes(data[pos:pos + 4], "big")
+        fs = _mp3_frame_size(hdr)
+        if fs is None or fs < 10 or pos + fs > total:
+            # Not a valid frame — pass byte through and keep scanning
+            out.append(data[pos:pos + 1])
+            pos += 1
+            continue
 
-        if layer != 1:
-            break  # not Layer III — nothing to strip
-
-        # Offset to Xing tag within this frame
-        if version == 3:  # MPEG1
+        # Check for Xing/Info/LAME tag at the expected side-info offset
+        version = (hdr >> 19) & 0x3
+        ch_mode = (hdr >>  6) & 0x3
+        if version == 3:   # MPEG1
             side_info = 17 if ch_mode == 3 else 32
-        else:             # MPEG2 / MPEG2.5
+        else:              # MPEG2 / MPEG2.5
             side_info =  9 if ch_mode == 3 else 17
 
-        xing_pos = i + 4 + side_info
-        if xing_pos + 4 > len(data):
-            break
+        xing_pos = pos + 4 + side_info
+        if xing_pos + 4 <= total and data[xing_pos:xing_pos + 4] in vbr_tags:
+            # Skip this entire frame — it's silent VBR metadata padding
+            stripped += 1
+            pos += fs
+            continue
 
-        if data[xing_pos:xing_pos + 4] not in (b"Xing", b"Info", b"LAME"):
-            break  # first frame has no VBR tag — nothing to strip
+        out.append(data[pos:pos + fs])
+        pos += fs
 
-        # Calculate frame size so we can excise the whole info frame
-        BITRATES_V1 = [0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0]
-        BITRATES_V2 = [0, 8,16,24,32,40,48,56, 64, 80, 96,112,128,144,160,0]
-        SR_TABLE    = {3: [44100,48000,32000,0],
-                       2: [22050,24000,16000,0],
-                       0: [11025,12000, 8000,0]}
+    if stripped:
+        print(f"   ℹ️   Stripped {stripped} VBR info frame(s) from MP3 for browser embedding.")
 
-        br_idx  = (hdr >> 12) & 0xF
-        sr_idx  = (hdr >> 10) & 0x3
-        padding = (hdr >>  9) & 0x1
-
-        bitrates    = BITRATES_V1 if version == 3 else BITRATES_V2
-        sample_rate = SR_TABLE.get(version, SR_TABLE[3])[sr_idx]
-        bitrate     = bitrates[br_idx] * 1000
-
-        if bitrate == 0 or sample_rate == 0:
-            break
-
-        frame_size = (144 * bitrate // sample_rate) + padding
-        return data[:i] + data[i + frame_size:]
-
-    return data  # no Xing header found — return unchanged
+    return b"".join(out)
 
 _PAGE_CSS = """\
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1037,7 +1100,7 @@ body.has-player { padding-bottom: calc(var(--ph) + 8px); }
 .gal-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color .2s, transform .2s; }
 .gal-item:hover { border-color: var(--accent); transform: translateY(-2px); }
 .gal-item img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; cursor: zoom-in; }
-.gal-item figcaption { padding: 6px 10px; font-size: .72rem; color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
+.gal-caption { padding: 8px 10px; font-size: .8rem; color: var(--muted); line-height: 1.45; }
 .transcript-details { margin-top: 8px; }
 .transcript-summary { cursor: pointer; color: var(--accent); font-size: 0.9rem; padding: 8px 0; list-style: none; user-select: none; }
 .transcript-summary::-webkit-details-marker { display: none; }
@@ -1050,7 +1113,9 @@ details[open] .transcript-summary::before { content: "▼ "; }
 .ts-link:hover { text-decoration: underline; }
 .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 2000; align-items: center; justify-content: center; cursor: zoom-out; }
 .lightbox.open { display: flex; }
-.lightbox img { max-width: 92vw; max-height: 88vh; object-fit: contain; border-radius: var(--radius); box-shadow: 0 8px 48px rgba(0,0,0,.7); }
+.lightbox-content { display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: default; max-width: 92vw; }
+.lightbox-content img { max-width: 100%; max-height: 80vh; object-fit: contain; border-radius: var(--radius); box-shadow: 0 8px 48px rgba(0,0,0,.7); }
+.lightbox-caption { color: #cdd5e0; font-size: .88rem; line-height: 1.5; text-align: center; max-width: 700px; min-height: 1.2em; }
 .lightbox-close { position: absolute; top: 16px; right: 20px; font-size: 2rem; color: #fff; cursor: pointer; line-height: 1; opacity: .7; transition: opacity .15s; }
 .lightbox-close:hover { opacity: 1; }
 .player { position: fixed; bottom: 0; left: 0; right: 0; height: var(--ph); background: rgba(13,17,23,.93); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border-top: 1px solid var(--border); z-index: 1000; }
@@ -1124,15 +1189,26 @@ _PAGE_JS = """\
 }());
 
 (function () {
-  var lb    = document.getElementById('lightbox');
-  var lbImg = document.getElementById('lightboxImg');
+  var lb      = document.getElementById('lightbox');
+  var lbImg   = document.getElementById('lightboxImg');
+  var lbCap   = document.getElementById('lightboxCaption');
   if (!lb) return;
 
-  function open(src) { lbImg.src = src; lb.classList.add('open'); }
-  function close()   { lb.classList.remove('open'); lbImg.src = ''; }
+  function open(src, caption) {
+    lbImg.src = src;
+    if (lbCap) lbCap.textContent = caption || '';
+    lb.classList.add('open');
+  }
+  function close() {
+    lb.classList.remove('open');
+    lbImg.src = '';
+    if (lbCap) lbCap.textContent = '';
+  }
 
   document.querySelectorAll('.gal-item img').forEach(function (img) {
-    img.addEventListener('click', function () { open(img.src); });
+    img.addEventListener('click', function () {
+      open(img.src, img.getAttribute('data-caption'));
+    });
   });
 
   lb.addEventListener('click', function (e) {
@@ -1141,6 +1217,49 @@ _PAGE_JS = """\
 
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') close();
+  });
+}());
+
+(function () {
+  // Timestamp links — try to reuse one tab across clicks.
+  //
+  // Why not just use target="podslacker-yt"?
+  // YouTube sets Cross-Origin-Opener-Policy: same-origin, which moves the
+  // YouTube tab into a separate browsing context group the moment it loads.
+  // That severs the named-target registry, so every subsequent click looks
+  // like the target doesn't exist and a new tab is opened.
+  //
+  // Storing the window reference in JS and navigating via location.href
+  // survives COOP because we never try to *read* the cross-origin window —
+  // only write to its location, which the spec explicitly permits.
+  // If COOP did sever the reference (ytWin.closed === true), we fall back
+  // gracefully to opening a new tab and storing the new reference.
+  var ytWin = null;
+
+  document.querySelectorAll('.ts-link').forEach(function (a) {
+    a.removeAttribute('target');   // let JS take over entirely
+    a.addEventListener('click', function (e) {
+      e.preventDefault();
+      var url = a.href;
+      var navigated = false;
+
+      if (ytWin) {
+        try {
+          if (!ytWin.closed) {
+            ytWin.location.href = url;
+            navigated = true;
+            try { ytWin.focus(); } catch (_) {}
+          }
+        } catch (_) {
+          // COOP severed the reference — treat as if the window was closed
+          ytWin = null;
+        }
+      }
+
+      if (!navigated) {
+        ytWin = window.open(url, '_blank');
+      }
+    });
   });
 }());
 """
@@ -1156,6 +1275,7 @@ def generate_page(
     title: str | None = None,
     base_name: str | None = None,
     transcript_path: Path | None = None,
+    frame_captions: list[str] | None = None,
 ) -> Path:
     """Generate a self-contained HTML page bundling the summary, images, and audio.
 
@@ -1199,15 +1319,24 @@ def generate_page(
     # --- Embed images ---
     gallery_section = ""
     if image_paths:
+        captions_list = frame_captions or []
         gal_items = []
-        for img_path in image_paths:
+        for idx, img_path in enumerate(image_paths):
             if img_path.exists():
                 img_b64 = base64.b64encode(img_path.read_bytes()).decode("ascii")
                 fname = _html.escape(img_path.name)
+                caption_text = captions_list[idx] if idx < len(captions_list) else ""
+                caption_esc = _html.escape(caption_text)
+                figcaption = (
+                    f'<figcaption class="gal-caption">{caption_esc}</figcaption>'
+                    if caption_esc
+                    else f'<figcaption class="gal-caption">{fname}</figcaption>'
+                )
                 gal_items.append(
                     f'<figure class="gal-item">'
-                    f'<img src="data:image/jpeg;base64,{img_b64}" alt="{fname}" loading="lazy">'
-                    f'<figcaption>{fname}</figcaption>'
+                    f'<img src="data:image/jpeg;base64,{img_b64}" alt="{fname}"'
+                    f' loading="lazy" data-caption="{caption_esc}">'
+                    f'{figcaption}'
                     f'</figure>'
                 )
         if gal_items:
@@ -1316,7 +1445,10 @@ def generate_page(
         player_block,
         '\n\n<div id="lightbox" class="lightbox" role="dialog" aria-modal="true">'
         '<span class="lightbox-close" aria-label="Close">&times;</span>'
+        '<div class="lightbox-content">'
         '<img id="lightboxImg" src="" alt="Full size frame">'
+        '<p id="lightboxCaption" class="lightbox-caption"></p>'
+        '</div>'
         '</div>',
         "\n\n<script>\n",
         _PAGE_JS,
@@ -2025,6 +2157,7 @@ def main() -> None:
     # Initialise output-tracking variables used in Step 6
     audio_path: Path | None = None
     saved_frames: list[Path] = []
+    frame_captions: list[str] = []
 
     # ---- Step 4: Audio ----
     if not args.no_audio:
@@ -2107,7 +2240,10 @@ def main() -> None:
                 stream_url = None
 
             if stream_url:
-                saved_frames = capture_frames(stream_url, key_timestamps, output_dir, base_name)
+                frame_items = capture_frames(stream_url, key_timestamps, output_dir, base_name)
+                saved_frames = [p for p, _ in frame_items]
+                frame_ts     = [t for _, t in frame_items]
+                frame_captions = get_frame_captions(timed_entries, frame_ts)
                 if saved_frames:
                     print(f"\n🖼️   {len(saved_frames)} frame(s) saved → {output_dir}/")
                 else:
@@ -2136,6 +2272,7 @@ def main() -> None:
                 title=video_title,
                 base_name=base_name,
                 transcript_path=transcript_path,
+                frame_captions=frame_captions if frame_captions else None,
             )
             size_kb = page_path_out.stat().st_size // 1024
             print(f"   ✓ Page saved → {page_path_out}  ({size_kb:,} KB)")
