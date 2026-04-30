@@ -173,6 +173,62 @@
       font-style: italic;
     }
 
+    /* ── EXAMPLES ── */
+    .example-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+    }
+
+    .example-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color .2s;
+    }
+
+    .example-card:hover {
+      border-color: var(--accent);
+    }
+
+    .example-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .example-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+    }
+
+    .example-blurb {
+      font-size: 0.95rem;
+      color: #bcc0d0;
+      line-height: 1.75;
+      flex: 1;
+    }
+
+    .example-link {
+      display: inline-block;
+      margin-top: 8px;
+      color: var(--accent2);
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color .15s;
+    }
+
+    .example-link:hover { color: #fff; }
+
     /* ── FOOTER ── */
     footer {
       border-top: 1px solid var(--border);
@@ -281,6 +337,49 @@
       or optimism. You start watching things because you already know they're worth it.</p>
     </div>
     <div class="kicker">Smart slacking isn't laziness. It's just knowing when you're done.</div>
+  </section>
+
+  <!-- SEE IT IN ACTION -->
+  <section id="examples">
+    <h2>See it in action</h2>
+    <p style="color: var(--muted); margin-bottom: 36px; font-size: 1rem;">
+      Two real YouTube videos, run through PodSlacker. Each page has a summary, a generated
+      podcast, key moment screenshots, and a full clickable transcript — ready in minutes,
+      no watching required.
+    </p>
+    <div class="example-grid">
+
+      <div class="example-card">
+        <div class="example-label">Google I/O · Developer talk</div>
+        <div class="example-title">Personalize the User Experience with Generative UI</div>
+        <p class="example-blurb">
+          What if AI agents could build their own interfaces instead of dumping text at you?
+          This talk introduces Generative UI — a framework where agents dynamically compose
+          buttons, forms, and screens on the fly using the open A-to-I protocol. The result:
+          apps that adapt to the user's context and goals in real time rather than presenting
+          a fixed layout everyone has to navigate the same way.
+        </p>
+        <a class="example-link" href="outputs/personalize_the_user_experience_with_generative_ui_euBx8IvZTlA_page.html">
+          View PodSlacker page &rarr;
+        </a>
+      </div>
+
+      <div class="example-card">
+        <div class="example-label">Google DeepMind · Product overview</div>
+        <div class="example-title">What's New with Gemini from Google DeepMind</div>
+        <p class="example-blurb">
+          A fast-moving product showcase from DeepMind executives covering the full Gemini
+          roadmap: Gemini 3.1's multimodal reasoning, open-source Gemma models, Gemini Live
+          for expressive voice AI, the Lyria music-generation model, a Deep Research Agent,
+          the Genie 3 interactive 3D world model, and Gemini Robotics. A lot of announcements
+          packed into one session — exactly the kind of video that benefits from a summary first.
+        </p>
+        <a class="example-link" href="outputs/whats_new_with_gemini_from_google_deepmind_92LvgAcR6fI_page.html">
+          View PodSlacker page &rarr;
+        </a>
+      </div>
+
+    </div>
   </section>
 
   <footer>
