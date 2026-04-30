@@ -8,19 +8,22 @@ Turn any YouTube video into a podcast. podslacker fetches a video's transcript, 
 
 ```bash
 # 1. Install dependencies
-pip install youtube-transcript-api openai
+pip install youtube-transcript-api openai requests yt-dlp opencv-python-headless
 
 # 2. Set your OpenAI API key
 export OPENAI_API_KEY=sk-...
 
-# 3. Run it
+# 3. (Optional) edit podslacker.json to set your preferred defaults
+
+# 4. Run it
 python podslacker.py https://www.youtube.com/watch?v=VIDEO_ID
 ```
 
-Three files are created in the `outputs/` folder:
+Files created in the `outputs/` folder:
 - `<video_id>_transcript.md` — the raw transcript retrieved from YouTube
 - `<video_id>_summary.md` — structured markdown summary + podcast script
 - `<video_id>_podcast.mp3` — the generated podcast audio (`.wav` when using Kokoro)
+- `<video_id>_frame_01.jpg`, `_frame_02.jpg`, … — key-moment screenshots (5 by default; set `--num-frames 0` to skip)
 
 ---
 
@@ -32,16 +35,30 @@ Python 3.10 or later is required (the script uses `X | Y` union type hints).
 
 ### Dependencies
 
-Install with pip:
+**Core (always required):**
 
 ```bash
-pip install youtube-transcript-api openai
+pip install youtube-transcript-api openai requests
 ```
 
 | Package | Version | Purpose |
 |---|---|---|
 | `youtube-transcript-api` | >= 1.0.0 | Fetches YouTube captions without the Data API |
 | `openai` | >= 1.30.0 | LLM summarisation (chat completions) + TTS audio |
+| `requests` | >= 2.28.0 | HTTP session used for cookie-based authentication |
+
+**Frame capture (optional, enabled by default via `--num-frames 5`):**
+
+```bash
+pip install yt-dlp opencv-python-headless
+```
+
+| Package | Version | Purpose |
+|---|---|---|
+| `yt-dlp` | >= 2024.1.0 | Resolves a direct video stream URL without downloading the file |
+| `opencv-python-headless` | >= 4.8.0 | Seeks to timestamps and captures JPEG frames from the stream |
+
+If you do not want frame capture, pass `--num-frames 0` and you do not need these packages.
 
 No system-level dependencies are needed. The script concatenates MP3 audio as raw bytes, so **ffmpeg is not required**.
 
@@ -60,7 +77,7 @@ If you use a different LLM provider (see the LLM flags section below), set that 
 ```bash
 python -m venv .venv
 source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install youtube-transcript-api openai
+pip install youtube-transcript-api openai requests yt-dlp opencv-python-headless
 ```
 
 ---
@@ -77,14 +94,23 @@ python podslacker.py <url> [options]
 |---|---|
 | `url` | Full YouTube video URL (any standard format: `watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`) |
 
+### Config file
+
+| Flag | Default | Description |
+|---|---|---|
+| `--config FILE` | `podslacker.json` (auto) | Path to a JSON configuration file. If not specified, podslacker automatically loads `podslacker.json` from the same directory as the script when it exists. CLI flags always override config file values. See [Configuration File](#configuration-file) for details. |
+
 ### General options
 
 | Flag | Default | Description |
 |---|---|---|
 | `--output-dir DIR`, `-o DIR` | `outputs/` | Directory where all output files are saved. Created automatically if it doesn't exist. |
-| `--hosts {1,2}` | `2` | Number of podcast hosts. `1` produces a solo monologue narrated by a single host. `2` produces a two-host dialogue between Alex and Jordan. |
+| `--hosts {1,2}` | `2` | Number of podcast hosts. `1` produces a solo monologue narrated by a single host. `2` produces a two-host dialogue between the two named hosts. |
+| `--host1-name NAME` | `ALEX` | Name of the first host. Used as the speaker tag in the script, audio generation, and saved markdown. In `--hosts 1` mode this is the sole narrator. |
+| `--host2-name NAME` | `JORDAN` | Name of the second host. Only applies in `--hosts 2` (dialogue) mode. |
 | `--no-audio` | off | Skip TTS audio generation entirely. The transcript and summary markdown files are still written; only the audio file is omitted. |
 | `--reuse-summary` | off | If a summary markdown for this video already exists in `--output-dir`, skip the LLM call and read the script directly from that file. Saves LLM API costs when re-generating audio. Falls back to LLM generation if the file is not found. |
+| `--num-frames N` | `5` | Number of key-moment JPEG frames to capture from the video. The LLM automatically identifies the most significant timestamps. Set to `0` to disable entirely. Requires `yt-dlp` and `opencv-python-headless`. |
 
 ### YouTube access options
 
@@ -104,6 +130,7 @@ podslacker uses the OpenAI chat completions API for summarisation and script gen
 | `--llm-base-url URL` | OpenAI (`https://api.openai.com/v1`) | Base URL of the chat completions endpoint. Set this to use an alternative provider. |
 | `--llm-model MODEL` | `gpt-4o` | Model name to request. Use the model identifier the provider expects. |
 | `--llm-api-key-env VAR` | `OPENAI_API_KEY` | Name of the environment variable that holds the LLM API key. Keeping the key in an env var avoids it appearing in shell history. |
+| `--key-moments-model MODEL` | `openrouter/auto:free` | Model to use specifically for key-moment timestamp identification. Defaults to OpenRouter's free-tier auto-routing, which keeps frame analysis cost-free. Requires `--llm-base-url https://openrouter.ai/api/v1` and `--llm-api-key-env OPENROUTER_API_KEY` when using this default. Any model works here — the task is structured JSON output rather than creative writing. |
 
 **Compatible providers (examples):**
 
@@ -115,6 +142,34 @@ podslacker uses the OpenAI chat completions API for summarisation and script gen
 | Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
 | Together AI | `https://api.together.xyz/v1` | `meta-llama/Llama-3-70b-chat-hf` |
 
+### Per-step LLM overrides
+
+Each of the three LLM-driven pipeline steps can use a completely independent model and API provider. Any value left unset inherits from the corresponding base `--llm-*` flag, so existing behaviour is unchanged unless you explicitly set one.
+
+**Summary step**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--summary-model MODEL` | *(same as `--llm-model`)* | Model for the markdown summary call. |
+| `--summary-base-url URL` | *(same as `--llm-base-url`)* | API base URL for the summary call. |
+| `--summary-api-key-env VAR` | *(same as `--llm-api-key-env`)* | Env var holding the API key for the summary call. |
+
+**Script step (dialogue / monologue)**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--script-model MODEL` | *(same as `--llm-model`)* | Model for the podcast script call. |
+| `--script-base-url URL` | *(same as `--llm-base-url`)* | API base URL for the script call. |
+| `--script-api-key-env VAR` | *(same as `--llm-api-key-env`)* | Env var holding the API key for the script call. |
+
+**Key moments step**
+
+| Flag | Default | Description |
+|---|---|---|
+| `--key-moments-model MODEL` | `openrouter/auto:free` | Model for key-moment timestamp identification. |
+| `--key-moments-base-url URL` | *(same as `--llm-base-url`)* | API base URL for the key-moments call. |
+| `--key-moments-api-key-env VAR` | *(same as `--llm-api-key-env`)* | Env var holding the API key for the key-moments call. |
+
 ### Prompt customisation options
 
 These flags let you swap out the system prompts sent to the LLM without editing the script. Each accepts a path to a plain text file. See [Customising Prompts](#customising-prompts) for the full priority rules and editing guidance.
@@ -124,6 +179,7 @@ These flags let you swap out the system prompts sent to the LLM without editing 
 | `--summary-prompt FILE` | `prompts/summary.txt` | System prompt for the markdown summary LLM call. |
 | `--dialogue-prompt FILE` | `prompts/dialogue.txt` | System prompt for the two-host dialogue LLM call (used when `--hosts 2`). |
 | `--monologue-prompt FILE` | `prompts/monologue.txt` | System prompt for the solo monologue LLM call (used when `--hosts 1`). |
+| `--key-moments-prompt FILE` | `prompts/key_moments.txt` | System prompt for the key-moment timestamp identification step. The literal text `{num_frames}` anywhere in the file is replaced at runtime with the value of `--num-frames`. |
 
 ### TTS engine
 
@@ -139,8 +195,8 @@ Used when `--tts-engine openai` (the default).
 |---|---|---|
 | `--tts-model MODEL` | `tts-1` | OpenAI TTS model. Use `tts-1-hd` for higher quality audio at a higher cost per character. |
 | `--tts-api-key-env VAR` | `OPENAI_API_KEY` | Name of the env var holding the TTS API key. Only needed if your TTS key is different from your LLM key. |
-| `--voice-alex VOICE` | `onyx` | Voice used for host Alex (solo host in `--hosts 1` mode, or the analytical host in two-host mode). |
-| `--voice-jordan VOICE` | `nova` | Voice used for host Jordan (only applies in `--hosts 2` mode). |
+| `--voice-host1 VOICE` | `onyx` | OpenAI voice for host 1 (`--host1-name`). Used as the sole narrator in `--hosts 1` mode. |
+| `--voice-host2 VOICE` | `nova` | OpenAI voice for host 2 (`--host2-name`). Only applies in `--hosts 2` mode. |
 
 **Available OpenAI voices:** `alloy`, `echo`, `fable`, `onyx`, `nova`, `shimmer`
 
@@ -155,8 +211,8 @@ pip install kokoro
 
 | Flag | Default | Description |
 |---|---|---|
-| `--kokoro-voice-alex VOICE` | `am_michael` | Kokoro voice ID for host Alex (and the sole host in `--hosts 1` mode). |
-| `--kokoro-voice-jordan VOICE` | `af_heart` | Kokoro voice ID for host Jordan (`--hosts 2` only). |
+| `--kokoro-voice-host1 VOICE` | `am_michael` | Kokoro voice ID for host 1 (`--host1-name`). Used as the sole narrator in `--hosts 1` mode. |
+| `--kokoro-voice-host2 VOICE` | `af_heart` | Kokoro voice ID for host 2 (`--host2-name`). Only applies in `--hosts 2` mode. |
 | `--kokoro-lang {a,b}` | `a` | Language variant: `a` = American English, `b` = British English. |
 | `--kokoro-speed RATE` | `1.0` | Speech rate multiplier. Try `1.1` for slightly faster delivery. |
 
@@ -229,8 +285,8 @@ python podslacker.py https://youtu.be/VIDEO_ID --tts-engine kokoro
 python podslacker.py https://youtu.be/VIDEO_ID \
   --tts-engine kokoro \
   --kokoro-lang b \
-  --kokoro-voice-alex bm_george \
-  --kokoro-voice-jordan bf_emma
+  --kokoro-voice-host1 bm_george \
+  --kokoro-voice-host2 bf_emma
 ```
 
 **Fully free run — local LLM (Ollama) + local TTS (Kokoro):**
@@ -241,6 +297,52 @@ python podslacker.py https://youtu.be/VIDEO_ID \
   --llm-model llama3.2 \
   --llm-api-key-env OPENAI_API_KEY \
   --tts-engine kokoro
+```
+
+**Capture 8 key-moment frames instead of the default 5:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID --num-frames 8
+```
+
+**Use a cheaper model just for frame analysis (saves cost):**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --llm-model gpt-4o \
+  --key-moments-model gpt-4o-mini
+```
+
+**Use a custom key moments prompt:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --key-moments-prompt ~/prompts/tech_talk_moments.txt
+```
+
+**Run without frame capture (no yt-dlp / OpenCV needed):**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID --num-frames 0
+```
+
+**Custom host names:**
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --host1-name SAM \
+  --host2-name TAYLOR
+```
+
+**Use a different model and provider for each step:**
+```bash
+export OPENAI_API_KEY=sk-...
+export OPENROUTER_API_KEY=sk-or-...
+python podslacker.py https://youtu.be/VIDEO_ID \
+  --llm-base-url https://openrouter.ai/api/v1 \
+  --llm-model anthropic/claude-3-5-sonnet \
+  --llm-api-key-env OPENROUTER_API_KEY \
+  --summary-model openai/gpt-4o \
+  --summary-base-url https://api.openai.com/v1 \
+  --summary-api-key-env OPENAI_API_KEY \
+  --key-moments-model openrouter/auto:free \
+  --key-moments-base-url https://openrouter.ai/api/v1 \
+  --key-moments-api-key-env OPENROUTER_API_KEY
 ```
 
 **Use a custom dialogue prompt for a different show format:**
@@ -259,19 +361,64 @@ python podslacker.py https://youtu.be/VIDEO_ID \
 
 ---
 
+## Configuration File
+
+`podslacker.json` (in the same folder as the script) is loaded automatically on every run. It lets you set persistent defaults for any flag without typing them on the command line each time. CLI flags always take precedence over config file values, which in turn take precedence over the hardcoded defaults.
+
+### Priority order
+
+```
+CLI flag  >  podslacker.json  >  argparse hardcoded default
+```
+
+### Example config
+
+```json
+{
+  "_comment": "My personal podslacker defaults",
+
+  "output_dir": "~/podcasts",
+  "hosts": 2,
+  "num_frames": 3,
+
+  "llm_base_url": "https://openrouter.ai/api/v1",
+  "llm_model": "anthropic/claude-3-5-sonnet",
+  "llm_api_key_env": "OPENROUTER_API_KEY",
+  "key_moments_model": "openrouter/auto:free",
+
+  "tts_engine": "openai",
+  "tts_model": "tts-1-hd",
+  "voice_alex": "onyx",
+  "voice_jordan": "nova"
+}
+```
+
+### Rules
+
+Keys that match CLI flag names with hyphens replaced by underscores (e.g. `--llm-base-url` → `"llm_base_url"`). Set a key to `null` (or omit it) to fall back to the argparse default — null entries are never applied. Keys beginning with `_` are treated as comments and ignored. An unrecognised key prints a warning but does not abort the run.
+
+### Using a different config file
+
+```bash
+python podslacker.py https://youtu.be/VIDEO_ID --config ~/my_setup.json
+```
+
+---
+
 ## Customising Prompts
 
 The LLM calls that generate the markdown summary and the podcast script are driven by system prompts stored as plain text files. You can edit these freely without touching the Python code.
 
 ### Prompt files
 
-The `prompts/` folder next to `podslacker.py` contains the three default prompt files:
+The `prompts/` folder next to `podslacker.py` contains the four default prompt files:
 
 | File | Used for |
 |---|---|
 | `prompts/summary.txt` | The markdown summary (both `--hosts` modes) |
 | `prompts/dialogue.txt` | The two-host conversation (`--hosts 2`) |
 | `prompts/monologue.txt` | The solo narration (`--hosts 1`) |
+| `prompts/key_moments.txt` | Key-moment timestamp identification for frame capture |
 
 Edit any of these files to change the LLM's behaviour for every future run.
 
@@ -285,22 +432,40 @@ Each prompt is resolved using the following priority, from highest to lowest:
 
 This means the script always works out of the box, even if the `prompts/` folder is missing.
 
+### Host name placeholders
+
+The dialogue and monologue prompts support `{host1_name}` and `{host2_name}` placeholders, which are substituted at runtime with the values of `--host1-name` and `--host2-name`. The default prompt files already use these, so changing the host names via config or CLI automatically flows through to the LLM instruction and the parsed output without any manual prompt editing.
+
+If you write a custom dialogue or monologue prompt, include these placeholders wherever you reference the hosts. For example:
+
+```
+[{host1_name}]: <what {host1_name} says>
+[{host2_name}]: <what {host2_name} says>
+```
+
+The script parser uses the configured names to detect speaker lines, so the placeholder in the output format line is what ties the name to the parsed segment.
+
+### The `{num_frames}` placeholder
+
+The key moments prompt (`prompts/key_moments.txt`) supports one special placeholder: `{num_frames}`. When podslacker runs, it substitutes this with the actual value of `--num-frames` before sending the prompt to the LLM. This lets the prompt instruct the model to return precisely the right number of timestamps. Keep `{num_frames}` somewhere in your custom prompt wherever you want the count to appear. For example:
+
+```
+Return ONLY a JSON array of exactly {num_frames} timestamps in seconds.
+```
+
 ### Tips for writing prompts
 
-The dialogue prompt must produce lines in exactly this format for the parser to recognise them:
+The dialogue and monologue prompts must produce lines whose speaker tags exactly match the configured host names. With the defaults this looks like:
 
 ```
-[ALEX]: <text>
-[JORDAN]: <text>
+[ALEX]: <text>        ← dialogue, host 1
+[JORDAN]: <text>      ← dialogue, host 2
+[ALEX]: <text>        ← monologue (host1_name is the sole narrator)
 ```
 
-The monologue prompt must produce lines in this format:
+If you set `--host1-name SAM --host2-name TAYLOR` the parser will look for `[SAM]:` and `[TAYLOR]:` instead. The `{host1_name}` and `{host2_name}` placeholders in the prompt files handle this automatically, so custom prompts that use the placeholders will always stay in sync with whatever names you configure.
 
-```
-[HOST]: <text>
-```
-
-You can rename the hosts, change their personalities, adjust the number of exchanges, switch to a different language, or change the tone entirely — as long as the output lines start with the correct speaker tag. The summary prompt has no format constraints and can be customised freely.
+The summary prompt has no format constraints and can be customised freely.
 
 ---
 
@@ -356,41 +521,50 @@ python podslacker.py https://youtu.be/VIDEO_ID \
 
 ## Architecture and Components
 
-podslacker is a single-file Python script with four clearly separated stages that run in sequence.
+podslacker is a single-file Python script with five clearly separated stages that run in sequence.
 
 ```
 YouTube URL
     │
     ▼
-┌──────────────────────┐
-│  1. Transcript fetch  │  youtube-transcript-api
-└──────────────────────┘
+┌──────────────────────────┐
+│  1. Transcript fetch      │  youtube-transcript-api
+└──────────────────────────┘
     │  writes outputs/<video_id>_transcript.md
-    │  raw transcript text
+    │  raw text + timed entries (timestamp per caption)
     ▼
-┌──────────────────────┐
-│  2. LLM generation   │  OpenAI-compatible chat completions
-└──────────────────────┘
+┌──────────────────────────┐
+│  2. LLM generation        │  OpenAI-compatible chat completions
+└──────────────────────────┘
     │  markdown summary + podcast script
     ▼
-┌──────────────────────┐
-│  3. File output      │  writes outputs/<video_id>_summary.md
-└──────────────────────┘
+┌──────────────────────────┐
+│  3. File output           │  writes outputs/<video_id>_summary.md
+└──────────────────────────┘
     │  script segments
     ▼
-┌──────────────────────┐
-│  4. TTS audio        │  OpenAI (MP3)  or  Kokoro local (WAV)
-└──────────────────────┘
+┌──────────────────────────┐
+│  4. TTS audio             │  OpenAI (MP3)  or  Kokoro local (WAV)
+└──────────────────────────┘
     │
     ▼
 outputs/<video_id>_podcast.mp3  (or .wav)
+
+    │  (if --num-frames > 0)
+    ▼
+┌──────────────────────────┐
+│  5. Frame capture         │  LLM → yt-dlp → OpenCV
+└──────────────────────────┘
+    │
+    ▼
+outputs/<video_id>_frame_01.jpg … _frame_N.jpg
 ```
 
 ### Stage 1 — Transcript fetch (`fetch_transcript`)
 
-Uses `youtube-transcript-api` to download the video's auto-generated or manually uploaded captions. The raw caption entries (each a short text snippet with a timestamp) are concatenated into a single string. If English captions are not available, the library falls back to any other available language. Optionally, a `requests.Session` loaded with browser cookies or a `GenericProxyConfig` is injected into the API client to work around YouTube IP blocks.
+Uses `youtube-transcript-api` to download the video's auto-generated or manually uploaded captions. Each caption snippet carries a start timestamp (in seconds) and a short text fragment. The function returns both the full concatenated text (used for LLM summarisation) and the raw list of `(start_seconds, text)` timed entries (used later for frame capture). If English captions are not available, the library falls back to any other available language. Optionally, a `requests.Session` loaded with browser cookies or a `GenericProxyConfig` is injected into the API client to work around YouTube IP blocks.
 
-Once fetched, the full transcript is immediately saved to `outputs/<video_id>_transcript.md` — a plain markdown file with a header containing the source URL and video ID, followed by the raw transcript text. This happens unconditionally before any LLM call, so the transcript is preserved even if later stages fail.
+Once fetched, the transcript is immediately saved to `outputs/<video_id>_transcript.md` — a plain markdown file with a header containing the source URL and video ID, followed by the caption entries written one per line with a `[MM:SS]` timestamp prefix. This happens unconditionally before any LLM call, so the transcript is preserved even if later stages fail.
 
 ### Stage 2 — LLM generation (`generate_content`)
 
@@ -422,7 +596,7 @@ Two TTS engines are available, selected by `--tts-engine`.
 
 ### Key design decisions
 
-**Two separate clients.** The LLM client and the TTS client are constructed independently. This allows the LLM to be routed to an alternative provider (e.g. OpenRouter) while TTS always hits OpenAI's endpoint, since most alternative providers do not offer speech synthesis.
+**Per-step LLM clients.** Each of the three LLM-driven steps (summary, script, key moments) gets its own OpenAI client built from its own base URL and API key env var. When a step's settings are identical to the base `--llm-*` config, the same client object is reused rather than opening a redundant connection. The TTS client is constructed independently from all of these, since TTS always hits OpenAI's endpoint regardless of which LLM provider is in use.
 
 **Env-var key references.** API keys are never passed as command-line arguments. Instead, flags like `--llm-api-key-env` accept the *name* of an environment variable, keeping secrets out of shell history and process listings.
 
@@ -431,3 +605,17 @@ Two TTS engines are available, selected by `--tts-engine`.
 **Pluggable TTS engines.** The audio generation step is cleanly separated from the rest of the pipeline. Adding a new engine only requires a new `generate_audio_*` function and a branch in `main()`. The existing OpenAI path is completely unchanged when `--tts-engine openai` is used.
 
 **Externalised prompts with graceful fallback.** The system prompts that drive the LLM are stored as plain text files in a `prompts/` folder, making them editable without touching Python code. A three-level priority chain (CLI flag → default file → hardcoded string) means the script degrades gracefully: it works even if the `prompts/` folder is deleted, and a single flag is enough to swap in a completely different prompt for a one-off run.
+
+**JSON configuration file.** `podslacker.json` is loaded automatically at startup and used to populate argparse defaults before the full parse runs. This is implemented as a two-pass parse: a quick `parse_known_args()` call extracts `--config` (if given), the file is loaded, and `parser.set_defaults()` injects its values — ensuring CLI flags still win. `null` values in the file are skipped so missing or unset fields always fall back to the hardcoded argparse defaults.
+
+### Stage 5 — Frame capture (`identify_key_moments`, `get_video_stream_url`, `capture_frames`)
+
+This optional stage (disabled with `--num-frames 0`) runs after audio generation and produces JPEG screenshots of key moments in the video without downloading the full file.
+
+**`identify_key_moments`.** Sends the LLM a condensed version of the timed transcript — one entry sampled roughly every 10 seconds — along with an instruction to return exactly N timestamps as a JSON array. The timestamps are chosen to represent visually interesting or topically significant moments spread across the video. The LLM's response is parsed with `json.loads`; any markdown fencing is stripped first.
+
+**`get_video_stream_url`.** Uses the `yt-dlp` Python API with `skip_download=True` and a format selector capped at 720p to resolve the direct HTTP URL of the video stream without touching the disk. This URL is valid for a session and is passed directly to OpenCV.
+
+**`capture_frames`.** Opens the stream URL as a `cv2.VideoCapture` object, seeks to each timestamp using `cv2.CAP_PROP_POS_MSEC`, and writes the decoded frame as a JPEG at 92% quality. Frames are named sequentially — `<video_id>_frame_01.jpg`, `_frame_02.jpg`, etc. — and saved to the same `outputs/` directory as all other files. The capture object is always released in a `finally` block even if an individual frame fails.
+
+**Why stream-only (no download).** Downloading a full video just to extract a few frames wastes bandwidth and storage. yt-dlp's stream URL approach lets OpenCV seek directly to any position in the remote file using HTTP range requests, so frames are captured in seconds with no temporary video file on disk.

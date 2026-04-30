@@ -1,0 +1,45 @@
+{
+  "_comment": "podslacker configuration file. Values here are defaults and can still be overridden by CLI flags.",
+
+  "output_dir": "outputs",
+  "hosts": 2,
+  "host1_name": "MIKE",
+  "host2_name": "JORDAN",
+  "no_audio": false,
+  "reuse_summary": false,
+  "num_frames": 5,
+
+  "cookies": null,
+  "proxy": null,
+
+  "summary_prompt": "prompts/summary.txt",
+  "dialogue_prompt": "prompts/dialogue.txt",
+  "monologue_prompt": "prompts/monologue.txt",
+  "key_moments_prompt": "prompts/key_moments.txt",
+
+  "llm_base_url": "https://openrouter.ai/api/v1",
+  "llm_model": "openrouter/auto:free",
+  "llm_api_key_env": "OPENROUTER_API_KEY",
+  "summary_model": null,
+  "summary_base_url": null,
+  "summary_api_key_env": null,
+
+  "script_model": null,
+  "script_base_url": null,
+  "script_api_key_env": null,
+
+  "key_moments_model": null,
+  "key_moments_base_url": null,
+  "key_moments_api_key_env": null,
+
+  "tts_engine": "kokoro",
+  "tts_model": "tts-1",
+  "tts_api_key_env": "OPENAI_API_KEY",
+  "voice_host1": "onyx",
+  "voice_host2": "nova",
+
+  "kokoro_voice_host1": "am_michael",
+  "kokoro_voice_host2": "af_heart",
+  "kokoro_lang": "a",
+  "kokoro_speed": 1.0
+}
