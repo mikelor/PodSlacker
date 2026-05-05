@@ -46,7 +46,7 @@ Files written to `outputs/`:
 | `*_transcript.txt` | Timestamped captions `[MM:SS] text` |
 | `*_summary.md` | LLM summary + full podcast script |
 | `*_podcast.wav` | Stitched audio (Kokoro) or `*_podcast.mp3` (OpenAI TTS) |
-| `*_frame_01.jpg` … | Key-moment screenshots (5 by default) |
+| `*_frame_01.jpg` … | Key-moment screenshots (6 by default) |
 | `*_page.html` | Self-contained page with summary, gallery, and audio player |
 
 ### Want a fully free, fully local run?
@@ -123,16 +123,25 @@ dotnet publish PodSlacker.Cli -c Release -r osx-arm64 --self-contained true -p:P
   "hosts": 2,
   "host1_name": "MIKE",
   "host2_name": "JORDAN",
+  "num_frames": 6,
 
   "_llm": "Use any OpenAI-compatible endpoint",
   "llm_base_url": "https://openrouter.ai/api/v1",
-  "llm_model": "google/gemini-2.0-flash-001",
+  "llm_model": "openrouter/auto:free",
   "llm_api_key_env": "OPENROUTER_API_KEY",
 
   "_tts": "kokoro = local, free. openai = cloud, requires API key.",
   "tts_engine": "kokoro",
-  "kokoro_voice_host1": "am_michael",
-  "kokoro_voice_host2": "af_heart",
+  "voice_host1": "am_michael",
+  "voice_host2": "af_heart",
+  "tts_model": "tts-1",
+  "tts_api_key_env": "OPENAI_API_KEY",
+
+  "_prompts": "Create these files to override the embedded defaults.",
+  "summary_prompt": "prompts/summary.txt",
+  "dialogue_prompt": "prompts/dialogue.txt",
+  "monologue_prompt": "prompts/monologue.txt",
+  "key_moments_prompt": "prompts/key_moments.txt",
 
   "_github": "Set publish_github to true and provide a GITHUB_TOKEN",
   "publish_github": false,
@@ -159,12 +168,12 @@ podslacker status <job-id> --server <url>
 |---|---|---|
 | `--output-dir, -o DIR` | `outputs` | Directory for all generated files |
 | `--hosts {1,2}` | `2` | `1` = solo monologue, `2` = two-host dialogue |
-| `--host1-name NAME` | `ALEX` | Name for the first (or only) host |
+| `--host1-name NAME` | `MIKE` | Name for the first (or only) host |
 | `--host2-name NAME` | `JORDAN` | Name for the second host |
 | `--no-audio` | off | Skip TTS synthesis |
 | `--no-page` | off | Skip HTML page generation |
 | `--reuse-summary` | off | Skip LLM calls if `*_summary.md` already exists |
-| `--num-frames N` | `5` | Key-moment screenshots to capture; `0` to disable |
+| `--num-frames N` | `6` | Key-moment screenshots to capture; `0` to disable |
 | `--config FILE` | auto | Path to a JSON config file |
 
 ### YouTube Access
@@ -178,9 +187,11 @@ podslacker status <job-id> --server <url>
 
 | Flag | Default | Description |
 |---|---|---|
-| `--llm-model MODEL` | `gpt-4o` | Model identifier |
-| `--llm-base-url URL` | OpenAI | Base URL for the chat completions endpoint |
-| `--llm-api-key-env VAR` | `OPENAI_API_KEY` | Env var holding the API key |
+| `--llm-model MODEL` | `openrouter/auto:free` | Model identifier |
+| `--llm-base-url URL` | `https://openrouter.ai/api/v1` | Base URL for the chat completions endpoint |
+| `--llm-api-key-env VAR` | `OPENROUTER_API_KEY` | Env var holding the API key |
+
+To use plain OpenAI instead, pass `--llm-base-url` *(omit for OpenAI)*, `--llm-model gpt-4o`, and `--llm-api-key-env OPENAI_API_KEY`.
 
 Each pipeline step (summary, script, key-moments) can override these independently using `--summary-model`, `--summary-base-url`, `--summary-api-key-env`, and equivalents for `--script-*` and `--key-moments-*`.
 

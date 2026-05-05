@@ -54,16 +54,15 @@ public sealed class PodSlackerConfig
 
     // ── Base LLM provider (used as fallback for all steps) ───────────────────
 
-    /// <summary>LLM model name sent in every <c>ChatOptions.ModelId</c> field (e.g. <c>gpt-4o</c> or <c>google/gemini-2.0-flash-001</c>).</summary>
-    public string  LlmModel      { get; init; } = "gpt-4o";
+    /// <summary>LLM model name sent in every <c>ChatOptions.ModelId</c> field (e.g. <c>openrouter/auto:free</c> or <c>gpt-4o</c>).</summary>
+    public string  LlmModel      { get; init; } = "openrouter/auto:free";
     /// <summary>
-    /// Base URL for the LLM API endpoint.  Leave <see langword="null"/> to use the
-    /// default OpenAI endpoint; set to an OpenRouter or other OpenAI-compatible URL to
-    /// use an alternative provider.
+    /// Base URL for the LLM API endpoint. Defaults to OpenRouter; set to <see langword="null"/>
+    /// to use the default OpenAI endpoint, or supply any other OpenAI-compatible URL.
     /// </summary>
-    public string? LlmBaseUrl    { get; init; }
-    /// <summary>Name of the environment variable that holds the LLM API key (e.g. <c>OPENAI_API_KEY</c> or <c>OPENROUTER_API_KEY</c>).</summary>
-    public string  LlmApiKeyEnv  { get; init; } = "OPENAI_API_KEY";
+    public string? LlmBaseUrl    { get; init; } = "https://openrouter.ai/api/v1";
+    /// <summary>Name of the environment variable that holds the LLM API key (e.g. <c>OPENROUTER_API_KEY</c> or <c>OPENAI_API_KEY</c>).</summary>
+    public string  LlmApiKeyEnv  { get; init; } = "OPENROUTER_API_KEY";
 
     // ── Per-step LLM overrides (null = use base LLM settings) ────────────────
 
