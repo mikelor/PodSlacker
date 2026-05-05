@@ -1,0 +1,53 @@
+name: podslacker
+
+services:
+
+  # ── API service ───────────────────────────────────────────────────────────────
+  podslacker-api:
+    build:
+      context: ./src
+      dockerfile: PodSlacker.ApiService/Dockerfile
+    ports:
+      - "5100:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Optional: require X-Api-Key header on all API requests.
+      PODSLACKER_API_KEY: ${PODSLACKER_API_KEY:-}
+      # LLM provider keys — set these in a .env file next to docker-compose.yml.
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      # Persist the Kokoro ONNX model (~320 MB) across container restarts so it
+      # only needs to be downloaded once.
+      - kokoro-model:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── Web UI ────────────────────────────────────────────────────────────────────
+  podslacker-web:
+    build:
+      context: ./src
+      dockerfile: PodSlacker.Web/Dockerfile
+    ports:
+      - "5200:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      # Point the web UI at the API container.
+      # Docker Compose DNS resolves "podslacker-api" to the API container's
+      # internal IP; port 8080 is what the container listens on.
+      PODSLACKER_SERVICE_URL: http://podslacker-api:8080
+      PODSLACKER_API_KEY: ${PODSLACKER_API_KEY:-}
+    depends_on:
+      podslacker-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  # Named volume for the Kokoro model.  Survives `docker compose down` but is
+  # removed by `docker compose down --volumes`.
+  kokoro-model:

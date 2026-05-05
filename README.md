@@ -15,6 +15,7 @@ Built on **.NET 10 / C# 14** with no Python, no ffmpeg, and no yt-dlp required. 
 - **Any OpenAI-compatible LLM.** Works with OpenRouter, Ollama, Groq, Azure OpenAI, Together AI — or vanilla OpenAI. Each pipeline step can use a different provider.
 - **Three ways to run.** CLI locally, CLI pointing at a remote API service, or a full Blazor web UI — all sharing the same pipeline core.
 - **Aspire orchestration.** Start the API service, web UI, and dashboard in one command with .NET Aspire. No ports to manage.
+- **Docker support.** Multi-stage Dockerfiles for both services and a `docker-compose.yml` for one-command local container runs. Cross-platform: OpenCvSharp runtime packages are selected automatically per OS.
 - **No yt-dlp dependency.** Transcripts, metadata, and video stream URLs are all resolved natively via [YoutubeExplode](https://github.com/Tyrrrz/YoutubeExplode).
 - **No ffmpeg dependency.** MP3 segments are concatenated as raw bytes; WAV files are written with a hand-written RIFF header.
 - **Self-contained HTML output.** Audio and screenshots are base64-embedded — the page opens in any browser, offline, with no web server.
@@ -26,14 +27,21 @@ Built on **.NET 10 / C# 14** with no Python, no ffmpeg, and no yt-dlp required. 
 ## Solution Structure
 
 ```
-PodSlacker.sln
+PodSlacker/
+├── docker-compose.yml            # Run API + Web as containers with one command
 └── src/
-    ├── PodSlacker.Core           # Pipeline logic, models, services — shared by all clients
-    ├── PodSlacker.Cli            # Command-line client (local or remote mode)
-    ├── PodSlacker.ApiService     # ASP.NET Core Minimal API — runs the pipeline as a web service
-    ├── PodSlacker.Web            # Blazor Server web UI — submits jobs and polls for results
-    ├── PodSlacker.ServiceDefaults# Shared health checks, OTEL, and service discovery wiring
-    └── PodSlacker.AppHost        # .NET Aspire host — orchestrates ApiService + Web together
+    ├── PodSlacker.sln
+    ├── .dockerignore             # Shared ignore rules for both Docker build contexts
+    ├── PodSlacker.Core/          # Pipeline logic, models, services — shared by all clients
+    ├── PodSlacker.Cli/           # Command-line client (local or remote mode)
+    ├── PodSlacker.ApiService/
+    │   ├── Dockerfile            # Multi-stage image with OpenCV native deps
+    │   └── ...                   # ASP.NET Core Minimal API — runs the pipeline as a web service
+    ├── PodSlacker.Web/
+    │   ├── Dockerfile            # Lightweight Blazor Server image (no native deps)
+    │   └── ...                   # Blazor Server web UI — submits jobs and polls for results
+    ├── PodSlacker.ServiceDefaults/ # Shared health checks, OTEL, and service discovery wiring
+    └── PodSlacker.AppHost/       # .NET Aspire host — orchestrates ApiService + Web together
 ```
 
 ---
@@ -176,6 +184,133 @@ All `config` fields are optional — omitted fields use the server's compiled de
 
 ---
 
+## Running with Docker
+
+Docker Compose is the quickest way to run both services as containers without installing the .NET SDK.
+
+```bash
+# 1. Create a .env file next to docker-compose.yml with your API keys
+echo "OPENROUTER_API_KEY=sk-or-..."  >> .env
+echo "PODSLACKER_API_KEY=my-secret" >> .env   # optional auth
+
+# 2. Build and start both services
+docker compose up --build
+
+# Web UI → http://localhost:5200
+# API    → http://localhost:5100
+```
+
+`docker compose down` stops the containers but preserves the `kokoro-model` volume so the 320 MB ONNX model doesn't need to re-download. Add `--volumes` to remove it too.
+
+### Building images individually
+
+Both Dockerfiles use the `src/` directory as their build context:
+
+```bash
+cd src
+
+# API service
+docker build -f PodSlacker.ApiService/Dockerfile -t podslacker-api .
+
+# Web UI
+docker build -f PodSlacker.Web/Dockerfile -t podslacker-web .
+```
+
+### Environment variables
+
+| Variable | Service | Description |
+|---|---|---|
+| `OPENROUTER_API_KEY` | API | LLM API key (or whichever provider you use) |
+| `OPENAI_API_KEY` | API | Required only when using OpenAI TTS |
+| `PODSLACKER_API_KEY` | API + Web | Enables `X-Api-Key` auth on the API; must match in both containers |
+| `PODSLACKER_SERVICE_URL` | Web | Set automatically by Docker Compose to `http://podslacker-api:8080` |
+| `ASPNETCORE_ENVIRONMENT` | Both | Defaults to `Development`; set to `Production` for hardened deployments |
+
+### OpenCV cross-platform support
+
+`PodSlacker.Core.csproj` selects the correct OpenCvSharp4 native runtime package at build time via MSBuild conditions:
+
+| Platform | Package |
+|---|---|
+| Windows | `OpenCvSharp4.runtime.win` |
+| Linux (Ubuntu 22.04) | `OpenCvSharp4.runtime.ubuntu.22.04-x64` |
+| macOS Apple Silicon | `OpenCvSharp4.runtime.osx-arm64` |
+| macOS Intel | `OpenCvSharp4.runtime.osx-x64` |
+
+The Linux image also installs the required system libraries (`libglib2.0-0`, `libgtk2.0-0`, `libavcodec-extra`, etc.) via `apt-get` in the Dockerfile's runtime stage.
+
+---
+
+## Exposing the Web UI via Dev Tunnels
+
+Dev Tunnels creates a secure public HTTPS URL that forwards to your locally-running web UI. This lets you share or access PodSlacker from any browser without deploying anything to a server.
+
+Only the **Web** project needs to be exposed. The ApiService is called server-side over `localhost` and never needs to be reachable from the internet.
+
+```
+Internet browser
+      │  HTTPS  (e.g. https://abc123-5200.usw2.devtunnels.ms)
+      ▼
+Dev Tunnel ──────────────► PodSlacker.Web  (localhost:5200)
+                                  │
+                                  │  http://localhost:5100  (internal only)
+                                  ▼
+                           PodSlacker.ApiService
+```
+
+### 1. Install and authenticate (one-time)
+
+```bash
+# Windows
+winget install Microsoft.devtunnel
+
+# macOS
+brew install --cask devtunnel
+
+# Log in with your Microsoft or GitHub account
+devtunnel user login
+```
+
+### 2. Fix the Web port (recommended)
+
+Aspire assigns a new port every run, which means you'd have to re-point the tunnel each time. Avoid that by pinning the Web UI to a fixed port in `AppHost/Program.cs`:
+
+```csharp
+builder
+    .AddProject<Projects.PodSlacker_Web>("podslacker-web")
+    .WithReference(apiService)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    .WithEnvironment("PODSLACKER_SERVICE_URL", "")
+    .WithHttpEndpoint(port: 5200, name: "http")   // fixed port — tunnel target never changes
+    .WithExternalHttpEndpoints();
+```
+
+### 3. Start your services
+
+```bash
+dotnet run --project src/PodSlacker.AppHost
+```
+
+### 4. Host the tunnel
+
+```bash
+# Quick one-off — public URL is printed, tunnel closes when you Ctrl+C
+devtunnel host --port-number 5200 --allow-anonymous
+
+# Or create a persistent named tunnel so the URL stays the same between sessions
+devtunnel create podslacker --allow-anonymous
+devtunnel port create podslacker --port-number 5200
+devtunnel host podslacker
+```
+
+The public URL will look like `https://abc123-5200.usw2.devtunnels.ms`. Share it or bookmark it — everything works including the Blazor interactive UI and the download endpoint.
+
+`--allow-anonymous` makes the URL accessible to anyone who has the link. Without it, Dev Tunnels requires visitors to sign in with a Microsoft account, which is useful if you want to restrict access.
+
+> **How Blazor works through the tunnel.** Blazor Server's interactive features rely on a WebSocket connection from the browser back to the server. The `UseForwardedHeaders()` middleware added to `PodSlacker.Web/Program.cs` tells ASP.NET Core to trust the `X-Forwarded-Proto` header that Dev Tunnels injects, so the app knows it's running behind HTTPS and produces the correct `wss://` upgrade URL. Without this the Blazor circuit silently fails and button clicks do nothing.
+
+---
+
 ## CLI Remote Mode
 
 When `PODSLACKER_SERVICE_URL` is set the CLI automatically delegates to the remote API instead of running the pipeline locally. All the usual `generate` flags (LLM provider, TTS engine, voices, etc.) are forwarded to the server in the request body.
@@ -201,8 +336,6 @@ The CLI submits the job, polls every 5 seconds printing progress, then downloads
 | LLM API key | — | OpenRouter, OpenAI, or any compatible provider |
 | OpenAI API key *(optional)* | — | Only needed when `--tts-engine openai` |
 | [Kokoro ONNX model](https://github.com/taylorchu/kokoro-onnx) (~320 MB) | auto-downloaded | Downloaded once on first Kokoro TTS run |
-
-> **Frame capture on Linux/macOS:** The project currently references `OpenCvSharp4.runtime.win`. To capture frames on Linux, add the appropriate `OpenCvSharp4.runtime.ubuntu.*` package to `PodSlacker.Core.csproj`, or pass `--num-frames 0` to skip frame capture entirely.
 
 ---
 

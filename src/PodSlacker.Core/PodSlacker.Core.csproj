@@ -25,9 +25,20 @@
     <!-- Markdown → HTML -->
     <PackageReference Include="Markdig" Version="1.1.3" />
 
-    <!-- Frame capture (OpenCV) -->
+    <!-- Frame capture (OpenCV) — platform-specific native binaries -->
     <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260427" />
-    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
+    <PackageReference Include="OpenCvSharp4.runtime.win"
+                      Version="4.13.0.20260302"
+                      Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="OpenCvSharp4.runtime.ubuntu.22.04-x64"
+                      Version="4.13.0.20260302"
+                      Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+    <PackageReference Include="OpenCvSharp4.runtime.osx-arm64"
+                      Version="4.13.0.20260302"
+                      Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'" />
+    <PackageReference Include="OpenCvSharp4.runtime.osx-x64"
+                      Version="4.13.0.20260302"
+                      Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'" />
 
     <!-- YouTube (transcripts, metadata, stream URLs — replaces yt-dlp subprocess) -->
     <PackageReference Include="YoutubeExplode" Version="6.6.0" />

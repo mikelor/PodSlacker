@@ -1,7 +1,25 @@
+using Microsoft.AspNetCore.HttpOverrides;
 using PodSlacker.ServiceDefaults;
 using PodSlacker.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Forwarded headers ─────────────────────────────────────────────────────────
+// Required when running behind a reverse proxy or tunnel (e.g. Dev Tunnels,
+// nginx, Azure App Service).  Tells ASP.NET Core to trust the X-Forwarded-For
+// and X-Forwarded-Proto headers so that:
+//   • Request.Scheme returns "https" (not "http")
+//   • Blazor Server's SignalR hub produces the correct wss:// upgrade URL
+// Without this the Blazor circuit silently fails to establish when accessed
+// through a tunnel and button clicks do nothing.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    // Trust all proxies — fine for Dev Tunnels and single-hop Azure ingress.
+    // Restrict to specific proxy IPs in a hardened multi-hop production setup.
+    options.KnownIPNetworks.Clear();  // .NET 10: replaces the obsolete KnownNetworks
+    options.KnownProxies.Clear();
+});
 
 // ── Service defaults (health checks, service discovery, resilience, OTEL) ────
 // AddServiceDefaults also calls ConfigureHttpClientDefaults which wires
@@ -45,6 +63,9 @@ builder.Services.AddHttpClient<PodSlackerApiClient>(client =>
 // ── Build ─────────────────────────────────────────────────────────────────────
 
 var app = builder.Build();
+
+// Must be first — rewrites Request.Scheme/Host before any other middleware reads them.
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {
