@@ -68,12 +68,13 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ---
 
-### OpenCvSharp4 / OpenCvSharp4.runtime.win
+### OpenCvSharp4 / OpenCvSharp4 platform runtime packages
 - **Version:** 4.13.0.20260427 / 4.13.0.20260302
 - **Author:** shimat
 - **License:** Apache License 2.0 (binding); Apache License 2.0 (OpenCV itself)
 - **Source:** https://github.com/shimat/opencvsharp
 - **Use:** Seeks to timestamps in a remote video stream and captures JPEG frames for the HTML page gallery
+- **Packages:** `OpenCvSharp4`, `OpenCvSharp4.runtime.win`, `OpenCvSharp4.runtime.ubuntu.22.04-x64`, `OpenCvSharp4.runtime.osx-arm64`, `OpenCvSharp4.runtime.osx-x64` (platform-specific native binaries selected at build time via MSBuild conditions)
 
 ```
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,6 +131,67 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 
 ---
 
+### Microsoft.AspNetCore.OpenApi
+- **Version:** 10.0.7
+- **Author:** Microsoft
+- **License:** MIT
+- **Source:** https://github.com/dotnet/aspnetcore
+- **Use:** Maps the OpenAPI (`/openapi/v1.json`) endpoint in `PodSlacker.ApiService` for development-time API exploration
+
+---
+
+### Microsoft.Extensions.Http.Resilience
+- **Version:** 10.5.0
+- **Author:** Microsoft
+- **License:** MIT
+- **Source:** https://github.com/dotnet/extensions
+- **Use:** Adds standard HTTP retry, timeout, and circuit-breaker policies to all `HttpClient` instances registered in `PodSlacker.ServiceDefaults`
+
+---
+
+### Microsoft.Extensions.ServiceDiscovery
+- **Version:** 10.5.0
+- **Author:** Microsoft
+- **License:** MIT
+- **Source:** https://github.com/dotnet/extensions
+- **Use:** Resolves logical service names (e.g. `http://podslacker-api`) to actual endpoints using environment variables injected by .NET Aspire's orchestrator
+
+---
+
+### OpenTelemetry for .NET
+- **Versions:** 1.15.x (see individual packages below)
+- **Author:** OpenTelemetry Authors
+- **License:** Apache License 2.0
+- **Source:** https://github.com/open-telemetry/opentelemetry-dotnet
+- **Packages:**
+  - `OpenTelemetry.Extensions.Hosting` 1.15.3 — integrates OTel with the .NET generic host lifetime
+  - `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3 — exports traces, metrics, and logs via OTLP to the Aspire Dashboard
+  - `OpenTelemetry.Instrumentation.AspNetCore` 1.15.2 — automatic tracing for ASP.NET Core request handling
+  - `OpenTelemetry.Instrumentation.Http` 1.15.1 — automatic tracing for outbound `HttpClient` calls
+  - `OpenTelemetry.Instrumentation.Runtime` 1.15.1 — .NET runtime metrics (GC, thread pool, etc.)
+- **Use:** Provides distributed tracing, structured logging, and metrics across `PodSlacker.ApiService` and `PodSlacker.Web`, surfaced in the Aspire Dashboard
+
+```
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
+```
+
+---
+
+### .NET Aspire Hosting packages
+- **Version:** 13.2.4
+- **Author:** Microsoft
+- **License:** MIT
+- **Source:** https://github.com/dotnet/aspire
+- **Packages:**
+  - `Aspire.Hosting.AppHost` — core orchestration APIs (`DistributedApplication`, `AddProject`, `WithReference`)
+  - `Aspire.Hosting.Orchestration.{win-x64,osx-arm64,osx-x64,linux-x64}` — DCP (Developer Control Plane) binary that launches and supervises the orchestrated processes; platform-specific package selected at build time
+  - `Aspire.Dashboard.Sdk.{win-x64,osx-arm64,osx-x64,linux-x64}` — self-contained Aspire Dashboard web app that displays traces, logs, and resource status; platform-specific package selected at build time
+- **Use:** `PodSlacker.AppHost` uses these packages to start `PodSlacker.ApiService` and `PodSlacker.Web` together in development, wire service discovery between them, and open the Aspire Dashboard
+
+---
+
 ## Python Dependencies (python/ directory)
 
 The original Python implementation in the `python/` subdirectory uses the following packages, each installable via `pip`:
@@ -157,4 +219,4 @@ The original Python implementation in the `python/` subdirectory uses the follow
 
 ---
 
-*This file was last updated: May 2026. If you believe any attribution is missing or incorrect, please open an issue.*
+*This file was last updated: May 2026 (added OpenTelemetry, Microsoft.Extensions.Http.Resilience, Microsoft.Extensions.ServiceDiscovery, Microsoft.AspNetCore.OpenApi, .NET Aspire Hosting packages, and cross-platform OpenCvSharp4 runtime packages). If you believe any attribution is missing or incorrect, please open an issue.*
