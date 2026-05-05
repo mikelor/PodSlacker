@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RootNamespace>PodSlacker.Core</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- AI abstraction + OpenAI provider -->
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.5.1" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.5.1" />
+    <PackageReference Include="OpenAI" Version="2.10.0" />
+
+    <!-- DI, logging, config -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.7" />
+
+    <!-- Markdown → HTML -->
+    <PackageReference Include="Markdig" Version="1.1.3" />
+
+    <!-- Frame capture (OpenCV) -->
+    <PackageReference Include="OpenCvSharp4" Version="4.13.0.20260427" />
+    <PackageReference Include="OpenCvSharp4.runtime.win" Version="4.13.0.20260302" />
+
+    <!-- YouTube (transcripts, metadata, stream URLs — replaces yt-dlp subprocess) -->
+    <PackageReference Include="YoutubeExplode" Version="6.6.0" />
+
+    <!-- Kokoro local TTS (replaces Python Kokoro subprocess) -->
+    <PackageReference Include="KokoroSharp.CPU" Version="0.6.7" />
+
+    <!-- GitHub API -->
+    <PackageReference Include="Octokit" Version="14.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Prompts are embedded resources so that CLI, API, and Azure Functions
+      all use the same canonical prompts from the Core DLL without any
+      file-copying or deployment concerns.
+
+      Priority at runtime:
+        1. Explicit CLI override path via flag (e.g. -summary-prompt /path/to/file.txt)
+        2. prompts/ folder next to the running executable  (for local customisation)
+        3. These embedded resources  (canonical defaults, always available)
+    -->
+    <EmbeddedResource Include="prompts\summary.txt" LogicalName="PodSlacker.Core.prompts.summary.txt" />
+    <EmbeddedResource Include="prompts\dialogue.txt" LogicalName="PodSlacker.Core.prompts.dialogue.txt" />
+    <EmbeddedResource Include="prompts\monologue.txt" LogicalName="PodSlacker.Core.prompts.monologue.txt" />
+    <EmbeddedResource Include="prompts\key_moments.txt" LogicalName="PodSlacker.Core.prompts.key_moments.txt" />
+  </ItemGroup>
+
+</Project>

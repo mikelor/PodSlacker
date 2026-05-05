@@ -1,0 +1,54 @@
+  {
+  "_comment": "PodSlacker configuration file. Values here are project defaults and can still be overridden by CLI flags.",
+
+  "_output": "Where generated files (summary, audio, HTML, frames) are written. Use an absolute path or a path relative to where you run the command.",
+  "output_dir": "outputs",
+  "hosts": 2,
+  "host1_name": "MIKE",
+  "host2_name": "JORDAN",
+  "no_audio": false,
+  "no_page": false,
+  "reuse_summary": false,
+  "num_frames": 6,
+
+  "_youtube": "Optional: path to a Netscape-format cookies.txt (exported from your browser) and/or a proxy URL.",
+  "cookies": null,
+  "proxy": null,
+
+  "_llm": "LLM provider settings. llm_base_url is omitted for OpenAI; set it for OpenRouter or any OpenAI-compatible endpoint.",
+  "llm_base_url": "https://openrouter.ai/api/v1",
+  "llm_model": "openrouter/auto:free",
+  "llm_api_key_env": "OPENROUTER_API_KEY",
+
+  "_per_step": "Leave null to use the base LLM settings above for every step.",
+  "summary_model": null,
+  "summary_base_url": null,
+  "summary_api_key_env": null,
+
+  "script_model": null,
+  "script_base_url": null,
+  "script_api_key_env": null,
+
+  "key_moments_model": null,
+  "key_moments_base_url": null,
+  "key_moments_api_key_env": null,
+
+  "_tts": "TTS engine: 'kokoro' (local, default) or 'openai' (cloud). Kokoro requires no API key; OpenAI TTS requires tts_api_key_env. voice_host1/2 are passed to whichever engine is active.",
+  "tts_engine": "kokoro",
+  "voice_host1": "am_michael",
+  "voice_host2": "af_heart",
+  "tts_model": "tts-1",
+  "tts_api_key_env": "OPENAI_API_KEY",
+
+  "_prompts": "Paths to custom prompt text files. If a file doesn't exist, PodSlacker falls back to the embedded defaults in PodSlacker.Core.dll. Create the file to override the default behaviour.",
+  "summary_prompt": "prompts/summary.txt",
+  "dialogue_prompt": "prompts/dialogue.txt",
+  "monologue_prompt": "prompts/monologue.txt",
+  "key_moments_prompt": "prompts/key_moments.txt",
+
+  "_github": "GitHub Pages publishing. Set publish_github to true and provide a GITHUB_TOKEN env var.",
+  "publish_github": false,
+  "github_repo": "podslacker-pages",
+  "github_token_env": "GITHUB_TOKEN",
+  "github_branch": "gh-pages"
+}

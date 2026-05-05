@@ -1,0 +1,18 @@
+## .NET build artefacts
+bin/
+obj/
+.vs/
+*.user
+*.suo
+.vs/
+TestResults/
+publish/
+
+## NuGet
+packages/
+*.nupkg
+project.lock.json
+
+## Rider / VS Code
+.idea/
+.vscode/

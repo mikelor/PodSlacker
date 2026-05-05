@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PodSlacker.Cli</RootNamespace>
+    <AssemblyName>podslacker</AssemblyName>
+    <!-- Single-file publish: dotnet publish -r win-x64 -p:SelfContained=true -p:PublishSingleFile=true -->
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" Version="2.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PodSlacker.Core\PodSlacker.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Copy the default config file next to the exe on every build. -->
+    <None Update="podslacker.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+
+    <!--
+      Copy the canonical prompt files from PodSlacker.Core into a prompts\
+      folder next to the exe. This means the paths in podslacker.json
+      ("prompts/summary.txt" etc.) resolve correctly at runtime, and users
+      can edit the files in-place to customise prompts without any flags.
+      The embedded resources in PodSlacker.Core.dll remain as a fallback
+      if the files are deleted.
+    -->
+    <None Include="..\PodSlacker.Core\prompts\*.txt" Link="prompts\%(Filename)%(Extension)">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

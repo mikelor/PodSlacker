@@ -1,0 +1,1231 @@
+﻿[00:13] welcome. Thank you so much for joining
+[00:15] us uh this morning I believe still for
+[00:17] for this session on agentic development.
+[00:20] I'm super excited to be here and I will
+[00:22] have a guest joining me shortly as we
+[00:25] talk about what's been happening in the
+[00:27] agent space. This session today is less
+[00:30] about all of the technology that Google
+[00:31] is building, but more just about how
+[00:33] we're thinking about agents and what's
+[00:36] happened over the past year. What are we
+[00:38] thinking in terms of the future? What's
+[00:39] coming in the next six months? So, my
+[00:41] name is Yasmine Ahmed. I look after data
+[00:44] cloud here at Google. Uh all of our
+[00:47] amazing technologies from the
+[00:48] analytical, operational, governance,
+[00:51] streaming, business intelligence
+[00:52] technologies. So let's jump straight in.
+[00:57] As we think about how the data industry
+[01:00] has built over the last decade, we've
+[01:03] really built for two consumers. The
+[01:05] human and the applications that they
+[01:07] use.
+[01:09] Interestingly, humans are actually not
+[01:11] very good at speaking data. So over
+[01:15] several uh uh now multiple decades,
+[01:18] we've built dashboards, UIs, interfaces,
+[01:21] buttons essentially to meet humans where
+[01:24] they are. Actually slowing down
+[01:26] technology to meet human speed because
+[01:29] humans take seconds to click. They take
+[01:31] minutes to read a chart. And actually
+[01:33] humans will often take days to even take
+[01:36] a decision based on data. So if you had
+[01:39] a complex query and it took 45 seconds
+[01:41] to run, it was fine. The human went and
+[01:44] grabbed a coffee and then we built the
+[01:47] applications that humans use. Those
+[01:49] applications built on rigid APIs. In
+[01:52] fact, being in the product engineering
+[01:54] team, one of the challenges is once you
+[01:56] build those APIs, they become tech debt.
+[01:59] Anytime you change an API, those
+[02:01] applications break. So as as product
+[02:05] engineering teams, we we have to be
+[02:06] super careful about how we even build
+[02:08] these platforms because as soon as
+[02:10] applications are built, those
+[02:11] applications are rigid. They are
+[02:14] connected into those APIs and they can't
+[02:17] be changed. So over the past decade,
+[02:20] we've built for two consumers who are
+[02:22] very deterministic.
+[02:24] But that's changing today. Architectures
+[02:27] are collapsing because the user that we
+[02:29] are architecting around no longer has a
+[02:32] pulse.
+[02:33] Agents are the future. In fact, when we
+[02:36] sit down in our product engineering
+[02:37] strategy sessions and we look at how are
+[02:40] we going to build the next generation of
+[02:41] data platform and now the agentic data
+[02:44] cloud, we actually put agent as the
+[02:47] central persona. Gone are the data
+[02:50] engineers, the data scientists, the
+[02:51] business users. Those personas will
+[02:53] still be important, but the interaction
+[02:56] layer is now owned by the agent. And
+[02:58] agents don't behave like humans. In
+[03:01] fact, just look at web traffic today. If
+[03:03] you take some of the stats that have
+[03:04] come out recently from the API gateways,
+[03:08] the web is seeing massive violent
+[03:10] spikes. And it's not because humans have
+[03:12] learned how to click faster, use a mouse
+[03:15] faster, or press buttons more quickly.
+[03:18] It's because we now have agents hitting
+[03:21] the web. And an agent doesn't just click
+[03:23] once. If you think about an agent
+[03:25] reasoning loop, agents will loop, they
+[03:28] will uh query, they will test and in the
+[03:31] time that a human took to do one click,
+[03:34] an agent might actually hit that API 10
+[03:37] to 20 times.
+[03:39] So those 10 to 20 time increased volumes
+[03:43] are actually driving 100x more compute
+[03:45] as agents come online. We're no longer
+[03:48] dealing with retrieval systems, the old
+[03:51] SQL world. We are now dealing with
+[03:54] reasoning because agents don't query,
+[03:57] they reason.
+[03:59] So as we look at agents, agents are now
+[04:03] driving everything. Agents are driving
+[04:06] data platforms. Agents are actually
+[04:08] operating over those applications that
+[04:11] we've had in the past. In fact, one of
+[04:13] the common questions that I've often had
+[04:15] from customers is, are we going to
+[04:17] replace our SAS applications now with
+[04:19] just agentic workflows? Well, the
+[04:22] reality is actually more nuanced. It's
+[04:24] not that the applications are completely
+[04:26] disappearing and being replaced, but
+[04:29] certainly the application layer, the
+[04:31] interface layer is being demoted. Agents
+[04:35] are bypassing those interface layers,
+[04:37] going direct to the APIs and driving
+[04:39] workflows across multiple systems. We're
+[04:42] moving from a world of SAS to actually
+[04:45] agents as a service. A perfect example
+[04:48] of this is one of my customers,
+[04:50] Manhattan. um Manhattan Associates.
+[04:53] Manhattan Associates run supply chains
+[04:55] for the largest retailers in the world
+[04:58] and they were running on legacy
+[05:00] databases
+[05:02] back to that rigid slow world. What
+[05:04] Manhattan Associates did is they
+[05:06] re-imagined as they moved to Google
+[05:08] Cloud and they built their Manhattan
+[05:10] agent foundry. They now have an army of
+[05:14] specialized agents. So for example, the
+[05:16] shipping tracking agent, it will
+[05:18] actually in real time monitor weather
+[05:21] and traffic patterns and automatically
+[05:24] autonomously rebook freight. Their wave
+[05:27] coordinator agent will pick up missing
+[05:29] inventory and reroute in real time uh
+[05:34] forklift drivers and uh various vehicle
+[05:37] uh operators.
+[05:39] These agents don't require a UI. There's
+[05:41] not a human sitting coordinating that
+[05:44] rrooting. It's now agents that aren't
+[05:46] just summarizing, they're actually
+[05:49] acting, they're doing.
+[05:52] So, as we think about this future with
+[05:55] agents as as the users, running that
+[05:59] agentic enterprise, trying to run a
+[06:01] fleet of agents on a data stack that was
+[06:04] built for humans just doesn't work. It
+[06:07] breaks. So we're at Google, we're really
+[06:10] rethinking how we invert the IT stack.
+[06:13] And we're inverting it across three
+[06:15] layers. So let's start with the
+[06:17] reasoning engine
+[06:19] to build an engine that's capable of
+[06:22] thought and reasoning, not just
+[06:23] retrieval. You can't build on a set of
+[06:26] fragmented tools. You actually need the
+[06:28] interface, the data, and the compute to
+[06:30] work seamlessly together.
+[06:33] So it all starts with that interface.
+[06:36] You know, if I think just before the
+[06:38] whole Geni momentum kicked off three
+[06:40] years, the industry was moving up the
+[06:42] stack. In fact, all the technical pieces
+[06:45] were being left in the background. Our
+[06:47] focus was on prettier UIs. Can we have
+[06:50] nicer looking applications? How do we
+[06:53] build something that a user likes to
+[06:55] interact with? Well, you might have
+[06:58] noticed recently that CLIs are sexy
+[07:01] again.
+[07:03] Suddenly the code is very interesting
+[07:05] again. Why? Because agents speak code.
+[07:09] Actually agents aren't necessarily
+[07:11] interested in those UIs and buttons.
+[07:14] They're bypassing those buttons. So in
+[07:18] reality, when a human was missing a
+[07:19] software tool, they would raise an IT
+[07:21] ticket and two weeks later an IT person
+[07:24] would have dealt with it. An agent can
+[07:27] actually drop into a sandbox, write some
+[07:29] Python, test it, execute it, and then
+[07:31] delete the code. Similarly, when an
+[07:33] agent hits a broken API, it can write a
+[07:37] patch, it can execute a new workflow, it
+[07:39] can work around that API.
+[07:42] So we're moving from a world where it's
+[07:44] actually less focused on those UIs and
+[07:46] more focus on those agentic terminals,
+[07:49] on those agentic interfaces, the tools,
+[07:52] the skills so that agents can drop in
+[07:55] and interact with these systems.
+[07:59] Beneath that interface is the SQL
+[08:01] engine. If I think about even at Google
+[08:04] building the data cloud over the last
+[08:07] decade, we obsessed over building the
+[08:09] most optimal SQL engine. How could we
+[08:12] crank the most performance efficiency
+[08:16] out of our SQL engines? Well, actually
+[08:19] the SQL engine is being replaced. Well,
+[08:23] I'll caveat that with I think the SQL
+[08:25] engine will remain, but actually agents
+[08:27] don't necessarily do the best with SQL.
+[08:30] They don't do deterministic questions.
+[08:33] They operate on intent.
+[08:36] Intent requires our engine to have more
+[08:38] than just SQL. Intent means an agent
+[08:41] needs to have vector embedding search
+[08:43] capabilities, to have graph
+[08:45] capabilities, to have relational, to
+[08:47] have unstructured data processing
+[08:49] capability.
+[08:51] This example I have here is of a
+[08:53] customer we uh worked with make my trip.
+[08:56] They're India's biggest online travel
+[08:58] agency and they wanted to build this
+[09:01] super interactive voice activated
+[09:03] experience so their consumers could
+[09:05] create a customized itinerary that was
+[09:07] multimodal.
+[09:09] However, when we started working with
+[09:11] make my trip they had MongoDB MongoDB
+[09:14] for unstructured data. They had quadrant
+[09:16] for vector embeddings. They were using
+[09:18] elastic search. They had a fragmented
+[09:21] tool stack. You can't build an highly
+[09:24] interactive experience on a fragmented
+[09:27] tool stack. And so this is what took us
+[09:30] on this journey of bringing all of these
+[09:33] capabilities that agents now need into
+[09:35] one engine where there's zero hops. So
+[09:38] for make my trip they leverage spanner
+[09:42] to with all of the graph the vector
+[09:44] embedding the AI inferencing and the
+[09:46] traditional relational SQL capabilities
+[09:49] to build this new experience reducing
+[09:51] operational complexity by 75%.
+[09:56] Okay but speed and having that that
+[09:59] engine and that interface requires some
+[10:01] amazing silicon because agents think in
+[10:04] invisible tok tokens.
+[10:07] If you think about how an agent
+[10:08] operates, an agent will build an
+[10:10] invisible decision tree. It's verifying
+[10:12] logic. It might actually now try
+[10:14] multiple paths and disambiguate.
+[10:17] One command can lead to 10,000 thinking
+[10:20] tokens.
+[10:21] So if chips are continue to be designed
+[10:24] for human speed, they're actually too
+[10:27] slow for these multi-step reasoning
+[10:29] loops. So this is why at Google, we also
+[10:32] believe it's not just the interface
+[10:34] layer that has to change or the data
+[10:35] layer. It's also the infrastructure.
+[10:38] This is where our AI hypercomputer comes
+[10:40] in. The innovations that you just heard
+[10:43] on the main keynote separating
+[10:45] inferencing from training compressing
+[10:47] memory sizes. So as an agent's reasoning
+[10:50] loop works through the interface layer,
+[10:52] through the data layer to the
+[10:54] infrastructure, we get the fastest speed
+[10:57] and we remove those traffic jams.
+[11:01] Okay. So we have a new interface. We've
+[11:03] got a single engine and we have our
+[11:06] amazing compute. This is moving us away
+[11:09] from a data cloud built from for storage
+[11:12] efficiency to really the future where we
+[11:14] need agentic data clouds that are built
+[11:17] for reasoning efficiency. Entirely
+[11:20] different mindset.
+[11:22] So let's look at the next layer now. So
+[11:24] what do you do with all of that speed?
+[11:26] How do you drive an outcome? This brings
+[11:29] me to orchestration.
+[11:31] You know the last decade we built it on
+[11:33] this idea of instruction. You wrote
+[11:36] imperative code. It was task based click
+[11:40] by click.
+[11:42] However, that era of instruction is
+[11:44] over. As we look at the agentic world
+[11:47] today, we now hear about intentdriven
+[11:49] engineering. Define the outcome and let
+[11:52] AI figure out the path. And in fact,
+[11:56] it's not just one AI. Today, my leading
+[11:59] customers are talking about swarms of
+[12:01] agents that are activated to complete
+[12:04] that that outcome.
+[12:07] Here's an example and this is actually a
+[12:09] real one that we that we ran. So, real
+[12:12] world scenario, the straight of Hermos
+[12:14] is closed. It's actually compounded by a
+[12:17] second clo dual blockade closure in the
+[12:20] Red Sea, forcing global shipping chains
+[12:23] to suspend transit and reroute via the
+[12:25] Cape of Good Hope. adding 14 days to
+[12:29] transit.
+[12:30] Now, traditionally, if we think about
+[12:32] the human world and how we've solved
+[12:34] this problem, if you were in a a company
+[12:36] impacted by this global event, a 72-hour
+[12:40] human sprint would start, a war room
+[12:43] would be assembled, analysts would pull
+[12:45] CSV files, build spreadsheets, and three
+[12:48] days later, a leader would walk into a
+[12:51] room with a slide deck to present a
+[12:54] strategy. By that time, the data is
+[12:57] stale, the cargo space is already gone,
+[12:59] and the business is already impacted by
+[13:01] millions.
+[13:03] In this new world, if we now look at the
+[13:06] capabilities of things like our deep
+[13:08] research agents, we're able to take that
+[13:12] intent and drive it to action
+[13:14] immediately. So, the intent can be as
+[13:17] simple as preserve margins on impacted
+[13:20] cargo. In the first millisecond, the
+[13:23] deep research agent detects a news
+[13:26] trigger. In the next 500 milliseconds,
+[13:29] we have an agent that is querying
+[13:30] BigQuery to find the exact shelf life of
+[13:33] perishable goods. 1 second later, we're
+[13:37] fetching live pricing data, checking air
+[13:40] freight, and checking our whether it's
+[13:42] compliant with ESG.
+[13:45] 3 seconds later, the swarm outputs a
+[13:47] migration mitigation strategy. So that
+[13:51] 72-hour human sprint is now done in
+[13:54] under three seconds.
+[13:57] But how does that work? How do we get a
+[13:59] swarm to activate around uh events like
+[14:03] this? Well, the reality is it's no
+[14:06] longer just about the model. The models
+[14:09] are super powerful. Gem Gemini is
+[14:11] amazing. The models can do impeccable
+[14:14] reasoning, thinking, but it takes more
+[14:17] than a model.
+[14:19] The model is the engine, but to turn
+[14:21] that model into
+[14:24] real outcomes, we need a harness. I
+[14:27] equate this back to the world of the
+[14:30] internet. When the internet was first
+[14:32] invented, super powerful technology, but
+[14:35] it was completely unusable. The internet
+[14:38] became usable once we built the web
+[14:40] browser. when humans could actually
+[14:42] build a website, when we could interact
+[14:45] with this amazingly powerful web
+[14:47] technology. Well, the agentic harness is
+[14:50] the same. The agentic harness creates
+[14:53] that environment that makes these super
+[14:55] powerful models easy to apply to real
+[14:58] world uh scenarios. So when I think
+[15:01] about that harness, that harness for us
+[15:03] has two things. It's first the identity.
+[15:06] You're setting the guard rails around
+[15:08] that model. You're defining its
+[15:10] enterprise memory. what data it has
+[15:12] access to, including real-time data,
+[15:14] analytical data. You're dictating
+[15:17] exactly the actions the agent can take.
+[15:20] And the second layer is a capability
+[15:22] layer. You're giving it the skills, the
+[15:24] tools, the workflows, the ability to
+[15:26] touch the real world and take action.
+[15:29] The harness is what allows agents to
+[15:32] orchestrate complex workflows and drive
+[15:35] outcomes.
+[15:39] I want to use an another example here of
+[15:41] a customer we worked with with this
+[15:43] agentic harness. This is the example of
+[15:46] infinite. They're a decentralized
+[15:48] finance trading platform. If you know
+[15:50] anything about decentralized finance,
+[15:52] very complex. Now when a human asks for
+[15:55] a financial strategy, their agentic
+[15:58] swarm wakes up. So first, a discovery
+[16:00] agent maps global liquidity risks. A
+[16:04] risk agent audits smart contracts for
+[16:06] vulnerabilities in milliseconds. An
+[16:09] execution agent drafts the routting path
+[16:11] to minimize price slippages. And then a
+[16:14] verification agent just watches the
+[16:17] whole entire thing and is ready to kill
+[16:20] the trade if the math changes at any
+[16:22] point in time.
+[16:24] This is a process that used to take them
+[16:26] 20 minutes. So a human would be
+[16:28] operating an multiple systems for 20
+[16:31] minutes to make a trade that had a
+[16:34] massive amount of risk. And now it's
+[16:36] compressed to a single instant action.
+[16:42] Okay, so let's move to layer three, the
+[16:44] trust fabric.
+[16:46] So how do you govern these massive
+[16:48] swarms? This is the next question my
+[16:50] customers ask ask me. Now that we have
+[16:53] not just one agent, 10 agents, you take
+[16:57] Virgin Voyager, they have a thousand
+[16:59] agents,
+[17:00] we need to be able to govern these
+[17:02] agents. And it's not just that these
+[17:04] agents are taking action, they're taking
+[17:06] action autonomously. So, how do we
+[17:09] ensure that these autonomous actions can
+[17:11] be trusted?
+[17:13] And this challenge is now compounded by
+[17:16] what I call the 1 million agent problem.
+[17:18] We'll be talking about this in our
+[17:20] spotlight for data cloud tomorrow. But
+[17:22] essentially, as we calculate how agents
+[17:24] are growing and how organizations are
+[17:27] creating agents, we're quickly seeing
+[17:29] that the average large enterprise is
+[17:32] getting to 100,000 to 500,000 agents
+[17:35] quickly to a million agents.
+[17:38] Think about trying to track a million
+[17:40] agents, evaluating whether they're doing
+[17:42] the right thing, monitoring what they're
+[17:44] doing, governing
+[17:46] uh meeting regulatory requirements.
+[17:49] In the old world, when we built
+[17:51] software, we saw evaluation as a gate.
+[17:55] If the software passed the unit test,
+[17:57] it's good to go and we're going to
+[17:58] deploy it. In the agentic world,
+[18:02] evaluation isn't a gate. It's a
+[18:05] continuous discipline. I equate this
+[18:07] back to the world of drug discovery
+[18:09] where I came from. In drug discovery, as
+[18:12] we looked at new drugs and we tested
+[18:14] them in the lab, that was not enough.
+[18:17] You actually in drug discovery have to
+[18:20] watch how a drug impacts a population.
+[18:23] So you watch it even after it's launched
+[18:26] for side effects that weren't prevalent
+[18:28] in the initial lab tests.
+[18:31] That continuous observability is what we
+[18:34] are seeing now come into play in the
+[18:36] agentic world different to how we
+[18:38] traditionally tested software.
+[18:41] And you also need hard limits. We call
+[18:44] it the two out of three rule. Can an
+[18:47] agent read your sensitive data, execute
+[18:49] code and work autonomously?
+[18:52] Probably not and probably never. The
+[18:55] danger is it could read your financials,
+[18:58] write a script and email it to
+[19:00] competitor. We wouldn't want that
+[19:02] happening. So the system needs a block.
+[19:05] It needs a guardian. And today that
+[19:07] guardian doesn't necessarily have to be
+[19:09] a human. It can simply be another agent.
+[19:12] In fact, Deutsche Telecom built this.
+[19:15] They built a RAN guardian. So they now
+[19:18] have an agent swarm that looks at their
+[19:20] network traffic. It proposes real-time
+[19:23] changes to 5G networks if say there's a
+[19:26] concert going on. But before it's able
+[19:29] to actually take action in the live
+[19:31] grid, the Guardian evaluates and ensures
+[19:34] the autonomous action is safe.
+[19:37] This Guardian works. They've managed to
+[19:40] reduce the time from major network
+[19:41] events from several hours down to a
+[19:44] single minute.
+[19:45] That's 95% improvement in resolution
+[19:48] times with zero compromising on
+[19:51] security.
+[19:54] Okay. So we've seen that inversion in
+[19:57] enterprise IT. I spoke about those
+[20:00] architectures of the past. They simply
+[20:03] don't meet the scale, the speed and the
+[20:05] action needs of the agents that we're
+[20:07] working with today. So whereas in the
+[20:10] past we worked with rigid software that
+[20:12] was trained
+[20:13] uh which was built and humans were
+[20:15] trained to operate on
+[20:18] today it's not humans that are operating
+[20:20] that software.
+[20:22] So the winners we see are not the
+[20:24] companies that are buying lots of
+[20:26] software licenses. It's looking at how
+[20:28] do we compress those 72-hour sprints
+[20:30] that were human driven down to 3 seconds
+[20:34] translating instructions into
+[20:36] orchestrating intent.
+[20:39] This is where we see the reasoning
+[20:41] engine, orchestration and trust fabrics
+[20:43] are critical and this is what we're
+[20:46] building at Google. We're building the
+[20:48] exact same architecture to build, deploy
+[20:50] and govern the autonomous enterprise.
+[20:53] So, please do check out our uh Aentic
+[20:56] data cloud spotlight session tomorrow
+[20:58] where we'll be deep diving into all of
+[21:00] the new innovations that we're
+[21:01] announcing here at Nex to meet this
+[21:03] future. But for now, I would like to
+[21:06] invite Farhan to the stage who's going
+[21:09] to join me for a fireside chat. Firhan,
+[21:19] >> I think you hear.
+[21:23] >> Perfect. Welcome Farhan. Thank you so
+[21:25] much for joining us.
+[21:26] >> No problem.
+[21:27] >> Um, so for for Han and I had a amazing
+[21:31] chat as a pre-brief. So, we have some
+[21:33] pre- uh wired questions, but I'm sure
+[21:35] this is going to be an interesting
+[21:36] conversation for Han because you're in
+[21:38] the deep of building agents at Shopify.
+[21:41] Um, so maybe just to for my first
+[21:43] question, I'd love to just double click
+[21:46] on your personal experience.
+[21:48] >> So, in our chat earlier, um, you spoke
+[21:50] about you were an initial skeptic and
+[21:53] then there was a moment that really
+[21:54] turned it around when you said, "Wow,
+[21:56] these what can these agents do for me?"
+[21:59] So, can you talk a little bit about that
+[22:00] wow moment for you? Yeah. So, if you're
+[22:02] if you're like me, I mean, obviously
+[22:03] there's been hype around um obviously
+[22:06] the LLMs and AI and you keep hearing in
+[22:08] the news and like from people AI AI and
+[22:11] then in in 25 I think in the middle they
+[22:13] said 2026 is going to be the year of
+[22:14] agents and I started just rolling my
+[22:16] eyes. I'm like what does that actually
+[22:17] mean? Like what what are they going to
+[22:19] do for you? And I didn't really feel
+[22:20] that it connected with me in terms of
+[22:22] like understanding what that next phase
+[22:24] was. And personally, it wasn't actually
+[22:26] till I started playing around with
+[22:27] OpenClaw
+[22:28] >> that it like really got me to think
+[22:30] about what this means. And so for those
+[22:31] of you people use OpenCloud or heard of
+[22:33] OpenCloud, right? And and it's this idea
+[22:35] that you have the same models that we've
+[22:37] had over the last few years. Of course,
+[22:39] the model is getting better all the
+[22:40] time, but this agentic we calling
+[22:43] agentic hardness now. This way to use
+[22:45] the model that's much more proactive.
+[22:47] And the interesting thing about OpenClaw
+[22:48] or any agentic system is it's
+[22:51] proactivity and this ability to keep
+[22:53] moving while you just ask it something
+[22:55] simple. So, you're moving out of just
+[22:56] asking a question to a chatbot like,
+[22:58] "Hey, what's a good restaurant in
+[23:00] Toronto, you know, uh, that I can go to
+[23:02] on Friday night to this more idea of,
+[23:05] hey, can I can you build can you
+[23:07] actually reserve a restaurant for me
+[23:09] every Friday for me and my wife at 7
+[23:12] p.m. It's completely different thing
+[23:14] that you can do. You can't ask that to a
+[23:16] Gemini or Chat GBT, but you can ask it
+[23:18] of your claw." And the funny thing about
+[23:19] when you ask out of your claw is or any
+[23:22] agentic system is it doesn't actually
+[23:24] have the tools to do that but it will
+[23:26] build them. So in my case when I asked
+[23:28] it that it said well are all of these
+[23:30] restaurants going to be an open table
+[23:31] and I said no. It said cool can you give
+[23:34] me a Twilio Twilio API key because it
+[23:36] built a voice server to call these
+[23:38] restaurants to make the reservations.
+[23:40] And when it was doing that it it did
+[23:42] this I it did this thing where it built
+[23:44] a voice server and then said let me do a
+[23:46] test call. It called me and when I tried
+[23:48] to interrupt it, I couldn't interrupt it
+[23:50] because it had built it kind of as half
+[23:51] duplex. And so I just went into my claw
+[23:53] and said, "Did you build this half
+[23:54] duplex? I need to be full duplex." It
+[23:56] said, "Oh, sorry." It deleted the code,
+[23:58] rewrote the code again, and then it was
+[24:00] full duplex. Then it called me and then
+[24:02] I realized that I didn't like the voice.
+[24:03] Then it changed the voice. Like it was
+[24:04] this idea of it's it's very proactive
+[24:06] and it really got me thinking that this
+[24:08] is a different modality even though it's
+[24:09] the same LLM, but it's a different
+[24:11] harness on top.
+[24:13] >> Yeah. Maybe just double clicking on
+[24:15] modalities because I know we spoke about
+[24:16] this. Chat was the first modality that
+[24:20] AI came about, but many people fixate on
+[24:23] chat, but you see the world as being
+[24:24] these other modalities really coming to
+[24:26] play, right?
+[24:27] >> Yeah. It was I mean it's it's a it
+[24:29] really forced me to re-evaluate what I
+[24:31] thought the LLM was capable of like
+[24:33] capable of. So if you look at what again
+[24:35] open clutch is one example, there's
+[24:36] Hermes agents there all the you know
+[24:37] you've just demoed a bunch of things
+[24:38] that are agentic as well. It just shows
+[24:41] you that the you know let's call it 10%
+[24:44] of the things outside of the LLM can
+[24:46] greatly change the infrastructure that
+[24:48] was the LLM right you gave the example
+[24:50] of the internet all of that
+[24:51] infrastructure existed but it wasn't
+[24:52] until the web that all of a sudden all
+[24:54] of these capabilities were unleashed and
+[24:56] I think the same thing is happening with
+[24:57] Agentic uh AI where you are now able to
+[25:00] use these tools that are proactive they
+[25:02] have a soul MD file they have an agents
+[25:05] MD file they have a a heartbeat which
+[25:08] does things on a schedule these Please
+[25:10] allow your LLM to do much more than you
+[25:13] thought possible because it's using that
+[25:14] infrastructure but it's like an
+[25:15] application on top of it.
+[25:17] >> Yeah, super fascinating. So, one of the
+[25:20] pieces that I know I speak to many
+[25:21] customers about is the technology is
+[25:23] amazing and how fast it's iterating but
+[25:26] the people and culture side is for an as
+[25:29] a leader of an organization. How are you
+[25:33] looking at the people people and culture
+[25:35] and adopting? Do you see people adopting
+[25:37] um natively the new technology? Are you
+[25:40] showcasing that internally? Yeah, it's
+[25:41] similar to when uh and so I run
+[25:44] engineering and so when uh GitHub
+[25:47] copilot came out and these LLM started
+[25:49] becoming very good at code, it took a
+[25:51] while for people to adopt because at the
+[25:52] beginning it was just autocomplete like
+[25:54] let me uh complete this uh portion of
+[25:57] code that I'm writing to this notion of
+[25:59] like let me give you a problem and it
+[26:00] just generates all the code to this idea
+[26:02] where there's these modalities like
+[26:03] Gemini CLI or cloud code where you don't
+[26:06] even look at the code you give it a
+[26:07] problem it writes the code in the
+[26:08] background and says does this work and
+[26:10] then you kind of give it feed feedback
+[26:11] and it takes people you know not
+[26:13] everyone is as used to this type of
+[26:15] change especially software engineers and
+[26:18] so it took a little little time for
+[26:19] people to adjust to the new world of
+[26:21] like hey I'm actually going to become a
+[26:22] manager of these tools that can build
+[26:24] code versus writing code myself and the
+[26:26] same thing's true of these agents
+[26:28] because now you you mentioned some
+[26:30] workflows where people probably did a
+[26:31] job where they're looking at like a you
+[26:33] know the like threat assessment and my
+[26:35] job is to look and understand the
+[26:36] details to actually I'm now managing
+[26:39] software that is going to do that for
+[26:41] me. I'm still valuable.
+[26:43] >> I'm removing the toil of the task by
+[26:46] using AI. But now actually the my role
+[26:48] is just different because I can do many
+[26:50] more things. And I would say it a lot of
+[26:53] the technology is out here but it's not
+[26:55] evenly distributed yet because companies
+[26:56] need to go through a transformation to
+[26:58] understand what's going to change. The
+[27:00] other thing I will say is the danger is
+[27:02] actually just taking what you have in
+[27:04] current process and just AI it or
+[27:06] automating it versus a lot of what we do
+[27:08] at Shopify is we kind of look at it and
+[27:10] say do we need to do this anymore or if
+[27:12] I could design it today how would I
+[27:13] design it and a lot of times it's like
+[27:15] delete the old thing and just build
+[27:17] something new and it's simpler and more
+[27:18] elegant designed for like the new world
+[27:20] and so we like to delete a lot
+[27:22] >> I love that delete a lot so I think even
+[27:25] at Google as um our engineering teams
+[27:27] have adopted initially it was an
+[27:30] assistant on the side. So it was very
+[27:32] much just supporting to write code that
+[27:35] you were writing anyway. Whereas I think
+[27:37] this next transformation as we're
+[27:39] talking about what agents can now do
+[27:41] with these forms is actually saying does
+[27:43] the workflow even have to exist as it
+[27:45] did before. Correct. Should we delete
+[27:46] what we were doing before because
+[27:48] there's a better way to do it. Any
+[27:50] specific examples uh for of things that
+[27:52] you've seen being deleted as you
+[27:55] reimagine?
+[27:56] >> Yeah. So one of the things like I used
+[27:57] to actually have a person so we
+[27:58] obviously have an internal product
+[28:00] roadmap and we had customers would
+[28:02] always say what's coming out from
+[28:03] Shopify in the next six months and I
+[28:04] actually had a person who would actually
+[28:06] try to figure out what are the things
+[28:08] that we can share with our customers and
+[28:10] they would build this thing called it
+[28:11] was called like the spreadsheet or
+[28:12] whatever like the the product roadmap
+[28:13] and they would look at the internal road
+[28:15] mapping they'd be in some of the
+[28:16] meetings they' part of like product and
+[28:17] product marketing they'd produce a road
+[28:19] map for the customer and every like day
+[28:20] it would change because you know the
+[28:22] product is moving or we would remove
+[28:24] some requirement or we'd add some
+[28:25] feature and they would have to keep that
+[28:26] up to date for a customer. Now what we
+[28:29] have is literally we have a project
+[28:31] management system and at any point
+[28:34] anyone in the company could say hey um
+[28:36] can you generate me a road map based on
+[28:39] this customer so a specific profile
+[28:41] maybe they're interested in a certain
+[28:42] domain and it can generate like almost
+[28:44] like a bespoke road map today based on
+[28:47] what's happening and say and please like
+[28:48] you know share out uh over the next
+[28:51] three months and so that not that that
+[28:53] person can be redeployed to do something
+[28:54] else and they're not just doing this
+[28:56] like toilsome job of like let me read a
+[28:58] bunch
+[28:58] screens here and cut and paste it into a
+[29:00] spreadsheet here then turn into a
+[29:01] presentation. All those things now can
+[29:03] just be automated away and it's much
+[29:05] higher fidelity because if that the
+[29:06] customer asked me every week it would be
+[29:08] a different road map and it would be
+[29:09] more up to date and so things like that
+[29:11] are actually very easy now with all the
+[29:12] when the tools are connected and the
+[29:14] data is connected what you have to do.
+[29:16] >> Yeah. Okay. I love that example. When I
+[29:18] get back to the office on Monday I have
+[29:20] two people who just generate custom road
+[29:22] maps. Yes. So I'm going to I'm going to
+[29:23] adopt that in my team. Um, okay. So,
+[29:26] let's talk a little bit about the uh the
+[29:28] projects that you have inside Shopify.
+[29:30] So, there was a couple of projects you'd
+[29:32] mentioned to me. So, let's start maybe
+[29:34] with River. Um, it's one of your
+[29:36] internal agentic systems. Can you talk a
+[29:38] little bit about what River does?
+[29:39] >> Yeah, so River is basically this idea of
+[29:42] it's it has access to all of our
+[29:43] internal systems. So, it can read Slack,
+[29:45] it can read uh G Suite, it can read
+[29:48] GitHub, it can read our product
+[29:49] management systems, it can read our
+[29:51] customer support systems. And what it
+[29:53] does, it's it's a way for you to kind of
+[29:55] as as a quick stop, just ask questions.
+[29:57] Now, the thing we've made uh clear with
+[29:59] River is it's only allowed to work in
+[30:01] public channels. And so, what's cool is
+[30:03] everybody in the company now has a River
+[30:05] channel. So, I have a channel called
+[30:06] Furhan River. Anybody can go into it and
+[30:09] see the questions I'm asking. A good
+[30:10] example is actually while I was sitting
+[30:11] here I got a text from a friend who said
+[30:13] hey my friend is on Shopify and he had
+[30:17] like an accounting question to deal with
+[30:19] whether the GAP accounting rules of his
+[30:22] business in his region are actually um
+[30:24] correct because actually he wants to
+[30:26] know whether we charge like the charge
+[30:29] the credit card based on fulfillment or
+[30:31] order like when do we charge the credit
+[30:33] card is it when somebody hits checkout
+[30:34] or when it's filled and shipped and so
+[30:38] instead of like in the past I'd be like
+[30:39] let me think about that. What region are
+[30:40] they in? Let me look it up. I just went
+[30:42] I literally took the text and went to
+[30:44] River and I could have, of course, I
+[30:45] think done the screenshot, but I took
+[30:46] the actual text and I said, "Hey, River,
+[30:48] I got this text. Is this true? What's
+[30:50] the answer?" And then River goes and
+[30:52] looks at our internal systems and comes
+[30:54] back and then gave me an answer. And I
+[30:56] could actually say, "Can you give me a
+[30:57] reply to the text?" Right? So, what it
+[31:00] did was it kind of went through. Now, of
+[31:01] course, I have to worry about
+[31:02] hallucinations and make sure it actually
+[31:04] still makes sense. But there's two
+[31:05] things that are interesting. One, it's
+[31:08] doing this analysis and allowing me to
+[31:10] kind of search the internal systems to
+[31:11] give me an answer, but two, I think this
+[31:14] is also important, I can see the types
+[31:16] of questions other leaders in the
+[31:18] company are asking about our systems and
+[31:20] what types of things are coming in. And
+[31:21] so, you know, I saw our head of retail
+[31:23] ask a question about the point of sale
+[31:25] and I was like, "Wow, that's an
+[31:26] interesting question about like
+[31:27] currency." And so we see these people in
+[31:29] different channels and we're all joining
+[31:31] each other's river channels to see these
+[31:32] questions that we're asking and then you
+[31:34] can say you can have it answer you know
+[31:36] answer it in the format that you want.
+[31:37] But I'll tell you a funny example.
+[31:39] People I'm sure this happens to you
+[31:40] guys. People tweet out bugs.
+[31:42] >> Mhm.
+[31:43] >> And so I can just take the tweet go to
+[31:45] river and say is this a real bug? And
+[31:47] then if it says yes I can say can you
+[31:49] generate the PR to fix the bug? And it
+[31:51] will write the code. And then of course
+[31:53] you know we can talk about this. We
+[31:54] still have a human review the code, but
+[31:56] it's now taken this thing that used to
+[31:58] be like, oh, it's a tweet and like what
+[31:59] do I do? Do I prioritize? I can just
+[32:00] say, oh, is it a bug? Yes. Okay, can you
+[32:02] generate the code and then someone can
+[32:03] merge it and now we fix the bug based on
+[32:05] a tweet without kind of having any of
+[32:06] the steps in between which are like road
+[32:08] mapping, find an engineer to write the
+[32:10] code, like all of those things go away.
+[32:12] >> That's awesome. I'd love to see Thomas
+[32:14] Kurin's questions and have that have
+[32:16] that internally at Google. Um, very
+[32:19] fascinating actually. that that idea of
+[32:21] being able to see other leaders, what
+[32:23] questions they're asking, it generates a
+[32:25] shared intelligence that everybody
+[32:27] benefits from.
+[32:27] >> Well, because don't forget it's public.
+[32:29] So each time a question is answered and
+[32:32] there's refinement that goes back into
+[32:34] River.
+[32:35] >> So if somebody goes to River, so this
+[32:36] happens sometimes. River is wrong,
+[32:37] right? So it says, "Oh, this is
+[32:39] whatever." And someone will jump in and
+[32:40] go, "Actually, River, you're wrong.
+[32:41] You're missing this data set." But now,
+[32:43] because it's in public channel, every
+[32:45] future question is now updated with that
+[32:47] new information. So you're not in a
+[32:48] place where you're like five people have
+[32:50] the outdated answer. Once one person has
+[32:51] the answer, everybody in in the next
+[32:53] time will get the the true answer, the
+[32:55] new answer.
+[32:55] >> Awesome. So maybe um can you talk a
+[32:58] little bit about how you had to change
+[33:00] adjust adapt your data architecture to
+[33:02] to build an agentic system like that?
+[33:04] >> Yeah. So one thing that's interesting is
+[33:05] well there's kind of two ways to do
+[33:06] this. One is you do migrations. We have
+[33:09] data here. We want it to be here, right?
+[33:11] Right. I mean one thing is good about
+[33:12] Shopify is one we've standardized on
+[33:14] BigQuery and so we have all of a lot of
+[33:16] our uh you know uh data analytics in
+[33:18] BigQuery but we have data all over the
+[33:19] place also like we have my SQL uh
+[33:22] databases we have Yugabyte we have
+[33:23] Spanner and so the first step of that
+[33:26] was actually putting an MCP servers in
+[33:28] front of these systems such that these
+[33:30] um first AI tools and now agents can
+[33:33] access them. So there was an MCP for
+[33:36] GitHub, an MCP for Slack, MCP for G G
+[33:38] Suite, right? Over time, those MCPs have
+[33:41] changed into skills, right? And so now
+[33:43] you have these skills that allow you to
+[33:44] be like, "Oh, I have a skill. I now know
+[33:46] how to search Slack or I know know how
+[33:47] to search the calendar." But these
+[33:49] agents can use those things and instead
+[33:51] of having to migrate like again I
+[33:52] messaged I I said I have BigQuery, I
+[33:54] have MySQL, I have Yugabyte, I have
+[33:55] Spanner, I don't have to migrate them
+[33:56] all to one system anymore. Now maybe I
+[33:58] want to for separate reasons because of
+[34:00] you know consolidation of cost or for
+[34:02] operational concerns but I don't have to
+[34:04] for agents if I if I have a skill or MCP
+[34:07] in front of those I can ask River or any
+[34:10] of the agents we use to uh answer a
+[34:12] question and it will go and look at
+[34:14] those sources to find the answer. If I
+[34:16] say something like, "Hey, tell me about
+[34:18] this account." It will know over time to
+[34:21] look at my email, Salesforce, Slack to
+[34:24] tell me all the product roadmap about
+[34:26] that account and it doesn't so you don't
+[34:28] have to consolidate anymore.
+[34:29] >> Amazing. Um, awesome. So, let's maybe
+[34:33] talk about the other uh agentic system.
+[34:36] You spoke about Shopify's pulse feature.
+[34:39] Um, tell me a little bit about pulse and
+[34:41] how that's helping your customers. Yeah.
+[34:43] So one again interesting thing about the
+[34:45] old model was in LLMs you ask it a
+[34:47] question it comes back to you and it's
+[34:48] very like in in the moment. One thing
+[34:51] that's cool about like whether it's
+[34:52] openclaw or aenting systems is you can
+[34:53] have these like heartbeats right and if
+[34:55] you're used to like Unix like these cron
+[34:56] jobs right that run in the background.
+[34:58] Pulse is this idea that every day we can
+[35:01] look at your and so Shopify is a way for
+[35:03] to have more entrepreneurs. We have
+[35:04] online storefronts and point of sale.
+[35:06] And if you're a merchant on Shopify, the
+[35:08] pulse will actually automatically look
+[35:11] at your store in the background and
+[35:13] suggest things that you might be missing
+[35:15] to improve your business. So in the
+[35:17] background, it might message you and
+[35:18] say, "Hey, did you know that your photos
+[35:19] are low resolution?
+[35:21] >> We know that from our data, high
+[35:22] resolution photos enhance uh
+[35:24] conversion." Or, "Did you know that this
+[35:26] best-selling product of yours over the
+[35:28] last 6 months, you've been running out
+[35:30] of inventory and no one can buy it
+[35:31] anymore?" So it's this idea of having
+[35:33] like a it's higher latency because it
+[35:34] happens like once a day or something but
+[35:36] it actually can get insights from uh the
+[35:40] system of Shopify because it we know
+[35:42] what works and what doesn't work and we
+[35:44] can give you those insights to be like
+[35:45] hey by the way you've added uh this
+[35:46] element to your theme it's slowing down
+[35:48] your website that might hurt conversion
+[35:50] something that you might not think about
+[35:51] so you don't even have to kind of ask it
+[35:53] it comes and tells you right it's kind
+[35:55] of like my claw I think I told you this
+[35:56] story right my claw messaged me the
+[35:57] other day and said how's your trip going
+[36:00] and I was like how the hell did you know
+[36:01] I'm on a trip, right? Because it would
+[36:03] but it knew from like my calendar and
+[36:05] the flight schedule that I'm on a trip.
+[36:06] And so it kind of proactively like
+[36:08] asking me this question. In Shopify
+[36:09] Pulse, we can say, "Hey, there's
+[36:11] something that you may not be
+[36:12] optimizing. Let us help you um optimize
+[36:14] your business."
+[36:15] >> Very cool. And do do you see um a time
+[36:18] where you actually move to autonomous
+[36:20] where there's no more human in the loop
+[36:22] and actually it maybe optimizes the uh
+[36:25] storefront for you? Uh are your
+[36:27] customers receptive to that?
+[36:28] >> Yeah, it depends, right? Because there's
+[36:30] still this notion of taste, right? So
+[36:32] you can have I think you know we saw a
+[36:34] demo. I think it was your demo, right?
+[36:35] Where you changed the slide title
+[36:36] because you're like actually I like
+[36:37] reimagined better. I think that's taste
+[36:39] is going to still be paramount here.
+[36:42] >> What should I build? What should I focus
+[36:44] on? What suggestions can I uh take from
+[36:46] you? But what can I do it myself? Right?
+[36:48] This happens a lot with AI writing. For
+[36:50] example, I'll have, you know, an AI
+[36:52] answer, but then I modify it to make it
+[36:53] sound like me. So I think the same
+[36:55] thing's going to happen with agents
+[36:56] because they're going to come back and
+[36:57] say, "Do you want me to do the following
+[36:58] you're like, "Yes, but change this to
+[37:01] this or don't invite that person or
+[37:03] please invite this person or make it red
+[37:05] or make it darker." So, I think that for
+[37:08] maybe for a while we will still be in
+[37:11] this loop um situation, but I think over
+[37:12] time it'll get better. There's like
+[37:14] internal manager tools at Shopify that
+[37:16] are agentic. And what I've realized is
+[37:19] um I will go through my workflow, read
+[37:21] certain emails, and respond to things
+[37:22] and respond to messages in Slack. And
+[37:24] then I'll look at what the manager tool
+[37:26] said I should do. And I noticed more and
+[37:27] more it's it's hitting the same things
+[37:29] that I would do. And so at some point
+[37:31] I'm going to switch and go to the
+[37:32] manager tool and say, "Okay, let me just
+[37:34] reply to these emails and these Slack
+[37:35] messages because the manager tools as
+[37:36] good as good as I am at figuring out
+[37:38] what the priorities are." Awesome. Um,
+[37:42] so just thinking about kind of agents
+[37:44] and that interface for your customers.
+[37:47] I spoke a little bit about the fact that
+[37:48] UIs are uh it's less about UIs today and
+[37:52] in the SAS space, everybody's been
+[37:54] talking about how is SAS being
+[37:55] disrupted. It's actually the UI
+[37:56] potentially being disrupted. Can you
+[37:58] talk about a little bit about how you're
+[38:00] thinking about that internally?
+[38:01] >> Yeah. So, a few things. One is like I
+[38:03] talked to my claw over iMessage, right?
+[38:05] There's no UI for my claw. At Shopify,
+[38:08] we have Sidekick, which is like a chat
+[38:09] on the side, and that's like textbased,
+[38:11] right? So, it it is it does show you the
+[38:13] workflow inside of the Shopify admin,
+[38:15] but you're you're primarily talking
+[38:17] through the the chat interface. When we
+[38:20] talk about buyer experiences, right?
+[38:21] Obviously, we are online e-commerce and
+[38:23] offline e-commerce as well. And we are
+[38:25] monitoring where buyers are going. And
+[38:27] if you go into Gemini and say, "Hey,
+[38:29] what's a great gift for my daughter for
+[38:31] her grade A graduation?" And then Gemini
+[38:34] shows you products and then Gemini shows
+[38:37] you a flow to either go to that website
+[38:39] or potentially just check out right in
+[38:41] flow. That's a change, a good change for
+[38:44] the buyer because now they don't have to
+[38:46] kind of go through all these different
+[38:47] brand sites. But a change for us as the
+[38:50] merchant of record to help them figure
+[38:52] out how to can complete that
+[38:53] transaction. And so we're seeing like
+[38:56] lots of innovation happening there.
+[38:58] It'll be interesting to see what the
+[39:00] modality changes for the for the buyer
+[39:02] because you know buyers you know I went
+[39:04] to the I haven't been to a mall in a
+[39:06] long time but I went to the mall the
+[39:07] other day and like malls are still
+[39:08] pretty th like it's it's a place where
+[39:09] people want to go shopping and they want
+[39:10] to have an experience and they want to
+[39:12] viscerally touch fabric and things like
+[39:13] that. So what is that in the new world?
+[39:16] Do I want to still go to the merchants
+[39:18] websites from uh Gemini or do I want to
+[39:20] actually just check out right there? So,
+[39:23] we're still talking about these things
+[39:24] and watching buyer behavior, but the
+[39:25] idea is for us to kind of build the
+[39:26] infrastructure so that wherever the
+[39:29] buyer goes or where the merchant wants
+[39:31] to talk to us, we have the
+[39:32] infrastructure to enable it.
+[39:34] >> Great. And so, as you're leading in the
+[39:36] space, you're you know, I some of the
+[39:38] use cases that you've just mentioned
+[39:40] here at the forefront of what I see some
+[39:42] of our customers doing, what do you see
+[39:44] as the big bottlenecks? Yeah, I mean one
+[39:48] is trusting the AI, right? So an example
+[39:50] is the human you said humans on their
+[39:52] lip for now. We we also have lots of
+[39:54] humans in the loop because we we don't
+[39:57] fully we don't fully trust the agent,
+[39:59] right? It is not even in engineering.
+[40:00] It's not as good as a compiler yet,
+[40:02] right? I was writing lots and lots of
+[40:04] code in the '9s and in the '9s I
+[40:05] remember working in a uh in a school
+[40:07] project where the C compiler didn't
+[40:09] actually produce the assembly I wanted.
+[40:11] I had to go and hand modify the assembly
+[40:13] code. So back then the compiler wasn't
+[40:15] even as uh uh as reliable as it is
+[40:18] today. So these um you know
+[40:21] non-deterministic systems are not at a
+[40:23] place yet where I would just let them go
+[40:24] on their own. One of the funny lines
+[40:26] when people ask me like why do you run
+[40:28] your open claw on a Mac Mini versus in
+[40:29] the cloud is because I can unplug it cuz
+[40:32] sometimes it can go it can go nuts. I
+[40:34] was in a meeting the other day and it
+[40:35] started like messaging me over and over
+[40:36] and it went into some crazy loop and I
+[40:37] literally went over and unplugged my
+[40:39] claw. So like there are things that can
+[40:41] go ary and I think human in the loop
+[40:44] right now for reliability is part of it
+[40:46] but I still believe that there's some
+[40:47] taste aspect but I think even over time
+[40:49] it'll learn your taste. So I would say
+[40:51] you you still have to really the
+[40:53] bottleneck is going to be the humans
+[40:54] that are in the loop.
+[40:56] >> They're going to the clock can do much
+[40:57] more your agents can do much more and
+[40:59] you have to figure out where you're
+[41:00] adding value to that loop and where
+[41:02] you're not.
+[41:03] >> Awesome. Um very interesting that you
+[41:06] can unplug it.
+[41:07] >> You can unplug my cloud. is a key core
+[41:09] requirement for you.
+[41:10] >> Um okay, let's talk a little bit about
+[41:13] um ROI.
+[41:14] >> So as we move from actually systems that
+[41:17] have been insights and we've taken
+[41:19] action on them and we've measured ROI in
+[41:22] this new world of agents where maybe
+[41:23] agents are just preventing things from
+[41:25] going wrong. How are you internally
+[41:27] thinking about the ROI measurement and
+[41:29] and partly putting together those
+[41:32] business cases for trying new things?
+[41:34] >> Yeah, I mean one interesting thing about
+[41:35] Shopify is we've always built
+[41:37] infrastructure. Mhm.
+[41:38] >> Meaning if um I could build a feature in
+[41:41] two or 3 weeks or I could build the
+[41:44] infrastructure to enable that feature
+[41:46] and it would take two or three months
+[41:48] but then I could build the feature in
+[41:49] one hour. I will always build the
+[41:51] infrastructure. I will always make sure
+[41:53] that I'm building the under like things
+[41:55] a few layers deeper such that anyone us
+[41:57] or a partner could go and say wow the
+[42:00] APIs are here. I can build that feature
+[42:01] in an hour. So the same thing is true
+[42:03] here in that we always try to build
+[42:04] infrastructure. We're not sure like what
+[42:06] the ROI case is because I don't know
+[42:08] what amazing use cases can be enabled
+[42:10] cuz when that one hour feature is built
+[42:12] guess what 10 50 other things are built
+[42:14] on top. So we've always been in the case
+[42:17] of let's overinvest on infrastructure.
+[42:20] Let's enable things for our first party
+[42:21] which is our own developers and our
+[42:23] external developers and we believe that
+[42:25] by building it the right way whether
+[42:26] it's for an AI era an agentic era just
+[42:29] for even infrastructure uh perspective
+[42:31] that will that will pay off uh in the
+[42:34] long run but we don't try to measure
+[42:35] like short-term ROI in the in the in the
+[42:38] way that you're saying we mostly just
+[42:39] think about what's the infrastructure
+[42:40] that should exist for commerce how do we
+[42:43] enable how do we make sure that anything
+[42:44] can be built on top of it and then we
+[42:46] worry about like the long term uh later
+[42:48] it's almost like a if If you build it,
+[42:50] they will like those things will come.
+[42:53] >> Amazing. For my last question for Han,
+[42:55] what's the one thing that you're looking
+[42:56] forward to in 2026? What innovation,
+[42:59] exciting advancement do you see coming?
+[43:01] >> Yeah. Well, I'm excited about um you
+[43:03] know, LLMs are still changing. So, I'm
+[43:05] excited about the next set of models. I
+[43:07] think the agentic harness was
+[43:08] underappreciated in 2025 and it was like
+[43:10] a buzzword that some people used and now
+[43:12] I think more and more people are are are
+[43:14] getting on top of it. I'm interested to
+[43:16] see like how far we can push the like
+[43:18] personalized agent. Whether it's for
+[43:19] managers at work, whether it's for a
+[43:21] personal like like I mentioned, I have a
+[43:23] claw that's calling a restaurant
+[43:24] reservation every Friday to set up a
+[43:26] dinner for my wife and I.
+[43:28] >> So, I think that that can remove a lot
+[43:29] of toil. And then I want to see what
+[43:31] else people spend their time on, right?
+[43:32] Like one of the things that's exciting
+[43:33] for me is I have, you know, I'm an
+[43:35] engineering leader and I haven't I
+[43:36] haven't spent as much time coding as I'd
+[43:37] like to. And now because I've got these
+[43:39] tools, I code much more and especially
+[43:41] on weekends when um I can pair with like
+[43:44] an agent. And so I think that uh just
+[43:46] the ability to kind of build your own
+[43:48] software again. And I think everybody
+[43:50] can be a builder again. That's the thing
+[43:51] I'm excited to see what people build
+[43:53] this year.
+[43:53] >> And I was super excited to hear that
+[43:55] from your CEO to your leadership, you're
+[43:57] all hands on coding.
+[43:58] >> Yeah.
+[43:59] >> I mean, my CEO never stopped coding, but
+[44:01] we uh we now everyone's coding and
+[44:03] there's no excuses. We've got 10
+[44:04] minutes. You can spin up a CLI or spin
+[44:07] up anti-gravity or something and just
+[44:08] write something and build something for
+[44:09] yourself.
+[44:10] >> That's amazing. Thank you so much for
+[44:11] joining us today, Farhan.
+[44:12] >> Cool. Thanks.
+[44:13] >> I hope you enjoyed the session. Thank
+[44:14] you.
+[44:16] Thank you.
