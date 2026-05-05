@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PodSlacker.AppHost</RootNamespace>
+    <AssemblyName>podslacker-host</AssemblyName>
+    <!--
+      Do NOT set IsAspireHost=true here. That was a workload-era property that
+      triggers NETSDK1228 on machines with the deprecated Aspire workload installed.
+      The NuGet-based Aspire.Hosting.AppHost package works without it.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Aspire hosting (NuGet-based; workload is deprecated and should be uninstalled) -->
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      IsAspireProjectResource is also workload-era — omitting it avoids any
+      secondary triggers of the workload deprecation check.
+    -->
+    <!--
+      IsAspireProjectResource tells the Aspire source generator to emit the
+      Projects.PodSlacker_ApiService proxy class used in Program.cs.
+      This is reference metadata only — it does NOT trigger NETSDK1228.
+    -->
+    <ProjectReference Include="..\PodSlacker.ApiService\PodSlacker.ApiService.csproj">
+      <IsAspireProjectResource>true</IsAspireProjectResource>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

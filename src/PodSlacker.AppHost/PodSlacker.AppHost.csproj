@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PodSlacker.AppHost</RootNamespace>
+    <AssemblyName>podslacker-host</AssemblyName>
+    <!--
+      IsAspireHost is a workload-era property — omitting it avoids NETSDK1228
+      on machines that still have the deprecated Aspire workload installed.
+      The NuGet-based Aspire.Hosting.AppHost package works without it.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Aspire.Hosting.AppHost 9.3.1 ships its own source generator that emits
+      the Projects.* proxy types.  Aspire 9.x targets net8+, so net10 is supported
+      as an orchestrated app; the AppHost itself can also run on net10.
+      Update to a newer Aspire release when one is available for .NET 10 RTM.
+    -->
+    <PackageReference Include="Aspire.Hosting.AppHost" Version="13.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      IsAspireProjectResource instructs the Aspire source generator to emit the
+      Projects.PodSlacker_ApiService proxy class used in Program.cs.
+      This is item metadata on the reference — it does NOT trigger NETSDK1228.
+    -->
+    <ProjectReference Include="..\PodSlacker.ApiService\PodSlacker.ApiService.csproj">
+      <IsAspireProjectResource>true</IsAspireProjectResource>
+    </ProjectReference>
+  </ItemGroup>
+
+</Project>

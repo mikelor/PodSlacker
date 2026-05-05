@@ -7,111 +7,121 @@
 
 ## Agentic Development: The Future of Data Platforms
 
-This session explores the evolution of data platforms from human-centric interfaces to agent-centric architectures. The speaker, Yasmine Ahmed from Google Data Cloud, discusses how the industry is shifting towards agents as the primary users, driving a fundamental reimagining of the data stack. This includes changes in the interface, the underlying data engine, and the infrastructure powering these agents. The talk also delves into the concept of orchestration, moving from imperative, task-based instructions to intent-driven engineering powered by swarms of agents working together.
+This video discusses the shift in data platform architecture from human-centric designs to agent-centric ones, driven by the evolving capabilities of AI agents. The speaker, Yasmine Ahmed from Google Data Cloud, explains how traditional data platforms, built for human interaction speeds and rigid application interfaces, are becoming obsolete. The future lies in agentic data clouds designed for reasoning efficiency, with agents as the primary users.
 
-### Major Sections & Topics:
+### Key Topics Covered:
 
-1.  **The Shift from Human to Agent Users:**
-    *   Historically, data platforms were built for human users via UIs, dashboards, and rigid APIs, slowing down technology to human speed.
-    *   Agents, however, operate at machine speed, leading to massive spikes in web traffic from API interactions.
-    *   Agents don't just retrieve information; they reason, loop, test, and can hit APIs multiple times for a single "human click," significantly increasing compute demands.
-
-2.  **The Inverted IT Stack for Agents:**
-    *   The traditional IT stack needs to be inverted to support agents. This involves three key layers:
-        *   **Reasoning Engine (Interface Layer):** Moving away from GUIs to "agentic terminals" and interfaces that agents understand (e.g., CLIs, code). Agents can write, test, and execute code to resolve issues or create tools.
-        *   **Single Engine (Data Layer):** The SQL engine is being replaced or augmented. Agents operate on intent, requiring capabilities beyond traditional SQL, including vector embedding, graph processing, relational, and unstructured data handling. Examples like MakeMyTrip demonstrate the need for a unified engine.
-        *   **Infrastructure Layer:** Silicon designed for human speed is insufficient for agentic reasoning loops. Google's AI hypercomputer, with innovations in separating training and inferencing, is crucial for agent performance.
-
-3.  **Orchestration and Intent-Driven Engineering:**
-    *   The era of imperative, task-based instructions is ending.
-    *   The future is intent-driven engineering: defining the desired outcome and letting AI figure out the path.
-    *   This is enabled by "swarms of agents" working collaboratively.
-    *   An example of global supply chain disruption highlights how a 72-hour human sprint can be compressed into seconds with agent swarms achieving rapid mitigation strategies.
-
-4.  **Agentic Harness for Action:**
-    *   Powerful AI models (like Gemini) need a "harness" to translate them into real-world outcomes.
-    *   This harness provides:
-        *   **Identity:** Guardrails, enterprise memory, data access, and defined actions for agents.
-        *   **Capabilities:** Skills, tools, workflows, and the ability to interact with the real world.
-    *   The harness allows agents to orchestrate complex workflows through identity and capabilities, as demonstrated by a decentralized finance trading platform example.
+*   **Evolution of Data Consumers:** The shift from humans and their applications as primary data consumers to AI agents.
+*   **Limitations of Human-Centric Architectures:**
+    *   Data platforms were built for human speed (e.g., dashboards, UIs) which slows down technology.
+    *   Rigid APIs and applications create tech debt and hinder flexibility.
+*   **The Rise of Agents:**
+    *   Agents are the future of data interaction, with their own reasoning loops and higher interaction volumes.
+    *   They bypass traditional UIs and interact directly with APIs.
+    *   Emergence of "agents as a service" rather than "SaaS."
+*   **Rethinking the IT Stack for Agents:**
+    *   **Reasoning Engine:** Moving beyond retrieval (SQL) to true reasoning capabilities, requiring a unified interface, data, and compute.
+    *   **Interface Layer:** Agents speak code and prefer agentic terminals and skills over GUIs.
+    *   **Data Layer:** The need for a unified engine supporting vector embeddings, graph databases, relational data, and unstructured data processing, moving beyond solely SQL.
+    *   **Infrastructure:** The necessity for powerful AI hardware (like Google's AI Hypercomputer) designed for rapid, multi-step reasoning.
+*   **Orchestration and Intent-Driven Engineering:**
+    *   The shift from imperative, task-based coding to defining outcomes and letting AI determine the path.
+    *   The concept of "swarms of agents" activated to achieve a defined intent.
+    *   "Agentic harness" as the framework that makes powerful AI models usable for real-world scenarios, comprising:
+        *   **Identity:** Defining guardrails, enterprise memory, and data access.
+        *   **Capabilities:** Providing the skills, tools, and workflows for agents to act.
+*   **Examples of Agentic Applications:**
+    *   Manhattan Associates: Autonomous rebooking of freight based on real-time weather and traffic.
+    *   MakeMyTrip: Building a multimodal, voice-activated itinerary planner using a unified data engine.
+    *   Supply Chain Mitigation: A swarm of agents responding to shipping disruptions in seconds.
+    *   decentralized Finance (DeFi) Trading: Agents performing risk audits, route planning, and real-time trade verification.
 
 ### Key Takeaways:
 
-*   The data industry is experiencing a paradigm shift from human-centric to agent-centric architectures.
-*   Agents operate at machine speed and require a fundamentally different data stack, from interfaces to infrastructure.
-*   The future of data platforms is an "agentic data cloud" optimized for reasoning efficiency, not just storage efficiency.
-*   Intent-driven engineering and agent swarms are revolutionizing how complex outcomes are achieved.
-*   An "agentic harness" is essential for making powerful AI models actionable and applying them to real-world scenarios.
+*   Data platforms are fundamentally changing from being built for human interaction to being built for AI agent interaction.
+*   Agents drive significantly higher volumes of interaction and require different architectural considerations than humans.
+*   The future of data platforms lies in "agentic data clouds" optimized for reasoning efficiency.
+*   This involves a unified interface, a comprehensive data engine capable of various data types and queries, and specialized AI infrastructure.
+*   Orchestration is shifting from manual instructions to intent-driven workflows powered by swarms of agents acting in concert.
+*   The "agentic harness" is crucial for translating powerful AI models into practical, real-world applications.
 
 ### Notable Quotes:
 
 *   "Architectures are collapsing because the user that we are architecting around no longer has a pulse. Agents are the future."
-*   "Agents don't just click once... an agent might actually hit that API 10 to 20 times."
-*   "We're no longer dealing with retrieval systems, the old SQL world. We are now dealing with reasoning because agents don't query, they reason."
-*   "You can't build on a set of fragmented tools. You actually need the interface, the data, and the compute to work seamlessly together."
-*   "CLIs are sexy again. Suddenly the code is very interesting again. Why? Because agents speak code."
-*   "The era of instruction is over. As we look at the agentic world today, we now hear about intent-driven engineering."
-*   "The agentic harness creates that environment that makes these super powerful models easy to apply to real world scenarios."
+*   "Agents don't query, they reason."
+*   "We're moving from a world of SaaS to actually agents as a service."
+*   "The agentic harness is the same [as the web browser for the internet]. The agentic harness creates that environment that makes these super powerful models easy to apply to real world scenarios."
+*   "The era of instruction is over. As we look at the agentic world today, we now hear about intent-driven engineering. Define the outcome and let AI figure out the path."
 
 ---
 
 ## Podcast Script
 
-**MIKE:** Welcome everyone, so glad you could join us today! We're diving deep into the fascinating world of agentic development.
+**MIKE:** Welcome everyone, thanks for joining us. Today, we're diving deep into something that's reshaping the tech landscape: agentic development.
 
-**JORDAN:** It's going to be a great conversation, Mike. We're not just talking about the tech itself, but really exploring how our thinking about these "agents" has evolved over the past year and where it's heading.
+**JORDAN:** Yeah, it's a fascinating shift, isn't it? We've heard so much about AI lately, but this is about the *next* evolution – thinking about how these agents will fundamentally change how we interact with data and technology.
 
-**MIKE:** Exactly, Jordan. The source material highlights a significant shift in how we've approached data and applications over the last decade. We've primarily built systems for human users and the applications they interact with.
+**MIKE:** Exactly. The core idea is that the data industry has historically been built for human users and the applications they employ. We've spent decades creating interfaces – dashboards, UIs, buttons – to make data accessible to humans.
 
-**JORDAN:** And the core issue there, right? Humans aren't naturally data-fluent. So we created all these dashboards and UIs, essentially slowing down technology to meet human pace.
+**JORDAN:** Because, let's face it, humans aren't naturally fluent in data. We need things translated, slowed down, made digestible, which really caters to human speed, not machine speed.
 
-**MIKE:** It's a crucial point. We built interfaces to bridge that gap, even if it meant waiting for a human to grab a coffee while a query ran. Applications, too, were built on rigid APIs, which became tech debt waiting to happen.
+**MIKE:** And then there are the applications we build, which rely on rigid APIs. As soon as those APIs are established, changing them becomes tech debt because any application built on them can break. So, we've had this very human-centric, deterministic system.
 
-**JORDAN:** But that's all changing dramatically. The source talks about architectures collapsing because the "user" we're designing for is no longer human. Agents are the new central persona.
+**JORDAN:** But that's precisely what's changing. The speaker highlights that architectures are collapsing because the primary user is no longer a human with a pulse. Instead, "agents are the future."
 
-**MIKE:** And this is where the impact is so profound. Agents don't operate at human speed, or with human limitations. Look at web traffic spikes – that’s agents, not humans clicking faster.
+**MIKE:** This is a massive paradigm shift. In product strategy sessions, agent is now the central persona, not data engineers or business users. The entire interaction layer is being handed over to agents.
 
-**JORDAN:** It's mind-blowing when you think about it. An agent’s reasoning loop means it can hit an API 10 to 20 times in the time a human makes one click. That's a massive increase in compute demand.
+**JORDAN:** And agents don't operate like humans at all. We're already seeing massive spikes in web traffic, not because humans are clicking faster, but because agents are hitting APIs.
 
-**MIKE:** Precisely. We're moving from retrieval-based systems, like the old SQL world, to systems focused on reasoning. Agents don't just query; they reason through problems.
+**MIKE:** It's a crucial distinction. A human might click once, but an agent's reasoning loop means it can query, test, and hit an API numerous times in the same period, leading to exponential increases in compute.
 
-**JORDAN:** This also means that our existing applications, while still relevant, are being bypassed. The source mentions agents going direct to APIs, demoting the application interface layer.
+**JORDAN:** So, we're moving beyond simple retrieval systems like SQL. Agents *reason*, they don't just query, which implies a much more complex way of interacting with data.
 
-**MIKE:** That's the nuance to the "agents replacing SaaS" question. It's more about agents becoming the service, rather than directly replacing the applications themselves.
+**MIKE:** This is evident in how agents are operating *over* existing applications. While they might not fully replace SaaS applications, they're certainly demoting the application layer by bypassing interfaces and going direct to APIs.
 
-**JORDAN:** The Manhattan Associates example is perfect here. They're using specialized agents for things like real-time shipping rebooking based on weather and traffic. These agents are *acting*, not just summarizing.
+**JORDAN:** The example of Manhattan Associates running supply chains really drives this home. They have specialized agents that autonomously rebook freight based on real-time weather and traffic, or reroute forklifts for inventory.
 
-**MIKE:** And that leads to the core challenge: running an "agentic enterprise" on a data stack built for humans just doesn't work. So, Google is rethinking the IT stack, inverting it into three layers.
+**MIKE:** These aren't just summarizing; they're *acting*. And trying to run an "agentic enterprise" on a data stack built for humans simply doesn't work; it breaks the system.
 
-**JORDAN:** The first layer they're focusing on is the interface. It's interesting how CLIs and code are becoming "sexy" again, because agents speak code and bypass traditional UIs.
+**JORDAN:** That's why Google is rethinking its IT stack, inverting it across three layers: reasoning engine, interface, and data. It all starts with the interface.
 
-**MIKE:** Yes, agents can write and test code in sandboxes, or even write patches for broken APIs. This shifts the focus from user-facing UIs to agentic terminals and the tools they need.
+**MIKE:** The speaker notes a fascinating resurgence of CLIs and code, which makes sense because agents "speak code." They're not necessarily interested in pretty UIs.
 
-**JORDAN:** And then beneath that interface is the data engine. The source argues that while SQL engines will remain, they're not ideal for agents operating on *intent*.
+**JORDAN:** They can drop into a sandbox, write and test Python code, and even write patches for broken APIs – tasks that used to take humans days or weeks to resolve.
 
-**MIKE:** Intent requires more than just SQL. It needs vector embeddings, graph capabilities, unstructured data processing. The MakeMyTrip example shows how fragmented stacks struggle, driving the need for a unified engine.
+**MIKE:** Beneath the interface is the engine. The traditional SQL engine, while still relevant, is being augmented. Agents operate on intent, which requires more than just SQL.
 
-**JORDAN:** That unified engine is key, especially with the infrastructure. Agents can generate thousands of "thinking tokens" per command, so chips designed for human speed are too slow.
+**JORDAN:** Intent necessitates capabilities like vector embedding search, graph processing, and unstructured data handling. The MakeMyTrip example shows how fragmented tools hinder creating interactive experiences.
 
-**MIKE:** Exactly. Google's AI hypercomputer, separating training and inferencing, is crucial for handling this massive compute demand and removing traffic jams.
+**MIKE:** So, the journey is towards a unified engine with zero hops, integrating these diverse capabilities. This is crucial for speed and for building these new agent-centric experiences.
 
-**JORDAN:** So we have a new interface, a unified engine, and powerful compute. This is shifting us from a data cloud built for storage efficiency to one built for *reasoning* efficiency.
+**JORDAN:** And to power this speed, you need incredible silicon. Agents generate vast amounts of "thinking tokens" in their reasoning loops, far exceeding human processing speeds.
 
-**MIKE:** And the next logical step is orchestration. The era of instruction-based, imperative code is ending; we're moving to intent-driven engineering.
+**MIKE:** If chips are designed for human speed, they're too slow. This is why Google is focusing on its AI hypercomputer, separating training and inferencing, and compressing memory.
 
-**JORDAN:** "Define the outcome and let AI figure out the path." That's the new paradigm, often involving "swarms" of agents working together.
+**JORDAN:** This leads us to a fundamental shift: from a data cloud built for storage efficiency to an "agentic data cloud" built for *reasoning efficiency*. It's an entirely different mindset.
 
-**MIKE:** The Strait of Hormuz example powerfully illustrates this. A 72-hour human sprint to solve a global shipping crisis is now compressed into seconds by an agent swarm.
+**MIKE:** And with all that speed, how do you drive outcomes? That's where orchestration comes in. The era of explicit instruction or imperative code is over.
 
-**JORDAN:** It's incredible. The source emphasizes that this isn't just about powerful models like Gemini, but about the "agentic harness" that makes them usable in the real world.
+**JORDAN:** We're moving towards "intent-driven engineering" – defining the outcome and letting AI figure out the path, often involving "swarms of agents" working together.
 
-**MIKE:** That harness provides identity – guardrails, memory, access – and a capability layer – skills, tools, workflows. It's what allows agents to orchestrate complex outcomes.
+**MIKE:** The Strait of Hormuz example is striking. A traditional human sprint to deal with a supply chain disruption took 72 hours, with stale data by the end.
 
-**JORDAN:** The Infinite example in decentralized finance really hammers this home. A swarm of agents handles discovery, risk auditing, execution, and verification in milliseconds, down from 20 minutes.
+**JORDAN:** Now, an intent like "preserve margins" can trigger a swarm that researches shelf life, fetches pricing, checks compliance, and outputs a migration strategy in *under three seconds*.
 
-**MIKE:** So, we've seen a massive evolution, from human-centric design to agent-centric architecture, driven by the need for reasoning, speed, and intent.
+**MIKE:** But how does that swarm activate? It's not just the model, like Gemini. You need a "harness" to turn that powerful model into real-world outcomes.
 
-**JORDAN:** It’s a fundamental shift in how we interact with and leverage technology, and it's only just beginning. Thanks for joining us on this deep dive!
+**JORDAN:** This harness is like the web browser for the internet. It provides identity, guardrails, enterprise memory, and a capability layer of skills and tools that allow agents to take action.
 
-**MIKE:** Absolutely. We'll catch you next time. Goodbye!
+**MIKE:** For the decentralized finance platform Infinite, this harness allows a swarm to detect liquidity risks, audit smart contracts, draft routing paths, and verify trades in milliseconds, compressing a 20-minute process.
+
+**JORDAN:** It's a monumental leap from human-driven, slow, deterministic systems to agent-driven, fast, intent-based operations. The implications for every industry are profound.
+
+**MIKE:** Absolutely. We've moved from building for human speed to enabling agent reasoning, which requires a complete reimagining of our data infrastructure and how we orchestrate complex workflows.
+
+**JORDAN:** So, the key takeaways are the shift to agents as the central persona, the move from retrieval to reasoning, the need for unified engines and specialized infrastructure, and the importance of the "agentic harness" for orchestrating action.
+
+**MIKE:** It's a new frontier, and the next six months are going to be incredibly exciting as these concepts continue to mature and be implemented.
+
+**JORDAN:** Indeed. Thanks for joining us on this deep dive into agentic development. We'll catch you next time!
 

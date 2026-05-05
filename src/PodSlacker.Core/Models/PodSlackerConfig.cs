@@ -5,7 +5,7 @@ namespace PodSlacker.Core.Models;
 /// and/or CLI flags. Mirrors the Python podslacker.json schema exactly so the same
 /// config file works for both implementations.
 /// </summary>
-public sealed class PodSlackerConfig
+public sealed record PodSlackerConfig
 {
     // ── Output ───────────────────────────────────────────────────────────────
 

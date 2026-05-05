@@ -1,5 +1,8 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
+using System.Net.Http.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -30,11 +33,6 @@ generateCmd.Add(urlArg);
 var outputDirOpt = new Option<string?>("--output-dir", ["-o"])
     { Description = "Directory for output files (default: value from podslacker.json, otherwise 'outputs')" };
 
-// Mode
-var serverOpt = new Option<string?>("--server")
-    { Description = "Submit the job to a running PodSlacker web service instead of running locally. " +
-                    "Example: --server http://localhost:5000" };
-
 // YouTube access
 var cookiesOpt = new Option<string?>("--cookies")  { Description = "Path to a Netscape-format cookies.txt file" };
 var proxyOpt   = new Option<string?>("--proxy")    { Description = "Proxy URL, e.g. http://user:pass@host:port" };
@@ -45,17 +43,17 @@ var proxyOpt   = new Option<string?>("--proxy")    { Description = "Proxy URL, e
 var noAudioOpt      = new Option<bool>("--no-audio")       { Description = "Skip audio generation" };
 var noPageOpt       = new Option<bool>("--no-page")        { Description = "Skip HTML page generation" };
 var reuseSummaryOpt = new Option<bool>("--reuse-summary")  { Description = "Reuse existing summary markdown if present" };
-var numFramesOpt    = new Option<int?>("--num-frames")     { Description = "Number of key-moment frames to capture (default: 5)" };
+var numFramesOpt    = new Option<int?>("--num-frames")     { Description = "Number of key-moment frames to capture (default: 6)" };
 var hostsOpt        = new Option<int?>("--hosts")          { Description = "Number of podcast hosts: 1 or 2 (default: 2)" };
 
 // Host names
-var host1NameOpt = new Option<string?>("--host1-name") { Description = "Name for host 1 (default: ALEX)" };
+var host1NameOpt = new Option<string?>("--host1-name") { Description = "Name for host 1 (default: MIKE)" };
 var host2NameOpt = new Option<string?>("--host2-name") { Description = "Name for host 2 (default: JORDAN)" };
 
 // Base LLM
-var llmBaseUrlOpt   = new Option<string?>("--llm-base-url")   { Description = "LLM API base URL (default: OpenAI)" };
-var llmModelOpt     = new Option<string?>("--llm-model")      { Description = "LLM model name (default: gpt-4o)" };
-var llmApiKeyEnvOpt = new Option<string?>("--llm-api-key-env"){ Description = "Env var for LLM API key (default: OPENAI_API_KEY)" };
+var llmBaseUrlOpt   = new Option<string?>("--llm-base-url")   { Description = "LLM API base URL (default: https://openrouter.ai/api/v1)" };
+var llmModelOpt     = new Option<string?>("--llm-model")      { Description = "LLM model name (default: openrouter/auto:free)" };
+var llmApiKeyEnvOpt = new Option<string?>("--llm-api-key-env"){ Description = "Env var for LLM API key (default: OPENROUTER_API_KEY)" };
 
 // Per-step LLM overrides
 var summaryModelOpt   = new Option<string?>("--summary-model")           { Description = "LLM model for summarisation step" };
@@ -91,10 +89,14 @@ var ghBranchOpt  = new Option<string?>("--github-branch") { Description = "GitHu
 // Config file
 var configOpt = new Option<string?>("--config") { Description = "Path to podslacker.json config file" };
 
+// Output file for remote mode (where to save the downloaded HTML)
+var outputFileOpt = new Option<string?>("--output-file")
+    { Description = "Path where the HTML page is saved in remote mode (default: <current dir>/<video-id>.html)" };
+
 // Add all options to the generate command
 foreach (var opt in new Option[]
 {
-    outputDirOpt, serverOpt, cookiesOpt, proxyOpt, noAudioOpt, noPageOpt,
+    outputDirOpt, cookiesOpt, proxyOpt, noAudioOpt, noPageOpt,
     reuseSummaryOpt, numFramesOpt, hostsOpt, host1NameOpt, host2NameOpt,
     llmBaseUrlOpt, llmModelOpt, llmApiKeyEnvOpt,
     summaryModelOpt, summaryBaseUrlOpt, summaryApiKeyOpt,
@@ -102,7 +104,8 @@ foreach (var opt in new Option[]
     kmModelOpt, kmBaseUrlOpt, kmApiKeyOpt,
     ttsEngineOpt, ttsModelOpt, ttsApiKeyOpt, voice1Opt, voice2Opt,
     summaryPromptOpt, dialoguePromptOpt, monologuePromptOpt, kmPromptOpt,
-    publishGhOpt, ghRepoOpt, ghTokenOpt, ghBranchOpt, configOpt,
+    publishGhOpt, ghRepoOpt, ghTokenOpt, ghBranchOpt,
+    configOpt, outputFileOpt,
 })
 {
     generateCmd.Add(opt);
@@ -112,12 +115,8 @@ foreach (var opt in new Option[]
 
 generateCmd.SetAction(async (ParseResult result, CancellationToken ct) =>
 {
-    string  url       = result.GetValue(urlArg)!;
-    string? serverUrl = result.GetValue(serverOpt);
-
-    // If --server is specified, delegate to the remote API.
-    if (serverUrl is not null)
-        return await RunRemoteAsync(url, serverUrl);
+    string  url        = result.GetValue(urlArg)!;
+    string? serviceUrl = Environment.GetEnvironmentVariable("PODSLACKER_SERVICE_URL");
 
     // ── Build config (JSON file base + CLI overrides) ────────────────────────
 
@@ -177,6 +176,13 @@ generateCmd.SetAction(async (ParseResult result, CancellationToken ct) =>
         GithubBranch   = result.GetValue(ghBranchOpt)   ?? fileConfig.GithubBranch,
     };
 
+    // If PODSLACKER_SERVICE_URL is set, delegate to the remote API.
+    if (!string.IsNullOrEmpty(serviceUrl))
+    {
+        string? outputFile = result.GetValue(outputFileOpt);
+        return await RunRemoteAsync(url, serviceUrl, config, outputFile, ct);
+    }
+
     // ── Build DI host ─────────────────────────────────────────────────────────
 
     var host = Host.CreateDefaultBuilder()
@@ -201,28 +207,8 @@ generateCmd.SetAction(async (ParseResult result, CancellationToken ct) =>
 
     // ── Build LLM chat client ─────────────────────────────────────────────────
 
-    string llmApiKey = RequireEnv(config.LlmApiKeyEnv, "LLM API key");
-    var openAiClient = config.LlmBaseUrl is not null
-        ? new OpenAIClient(
-            new ApiKeyCredential(llmApiKey),
-            new OpenAIClientOptions { Endpoint = new Uri(config.LlmBaseUrl) })
-        : new OpenAIClient(new ApiKeyCredential(llmApiKey));
-
-    IChatClient chatClient = openAiClient.GetChatClient(config.LlmModel).AsIChatClient();
-
-    // ── Build TTS client (OpenAI only; Kokoro runs locally without a client) ─────
-
-    AudioClient? audioClient = null;
-    bool useOpenAiTts = !config.NoAudio &&
-                        config.TtsEngine.Equals("openai", StringComparison.OrdinalIgnoreCase);
-    if (useOpenAiTts)
-    {
-        string ttsApiKey = RequireEnv(config.TtsApiKeyEnv, "TTS API key");
-        var ttsOpenAiClient = config.TtsApiKeyEnv == config.LlmApiKeyEnv && config.LlmBaseUrl is null
-            ? openAiClient
-            : new OpenAIClient(new ApiKeyCredential(ttsApiKey));
-        audioClient = ttsOpenAiClient.GetAudioClient(config.TtsModel);
-    }
+    IChatClient  chatClient  = PipelineClientFactory.CreateChatClient(config);
+    AudioClient? audioClient = PipelineClientFactory.CreateAudioClient(config);
 
     // ── Run pipeline ──────────────────────────────────────────────────────────
 
@@ -262,28 +248,154 @@ generateCmd.SetAction(async (ParseResult result, CancellationToken ct) =>
     }
 });
 
-// ── Remote mode stub ─────────────────────────────────────────────────────────
+// ── Remote mode ───────────────────────────────────────────────────────────────
 
-static Task<int> RunRemoteAsync(string videoUrl, string serverUrl)
+static async Task<int> RunRemoteAsync(
+    string           videoUrl,
+    string           serviceUrl,
+    PodSlackerConfig config,
+    string?          outputFile,
+    CancellationToken ct)
 {
-    // TODO (Phase 4): POST job to PodSlacker.Api and stream SSE progress.
-    Console.WriteLine($"🌐 Remote mode: submitting to {serverUrl}");
-    Console.WriteLine("   (Web service support not yet implemented — run without --server for local mode)");
-    return Task.FromResult(1);
+    Console.WriteLine($"🌐 Remote mode — service: {serviceUrl}");
+
+    // Read the API key from environment if present.
+    string? apiKey = Environment.GetEnvironmentVariable("PODSLACKER_API_KEY");
+
+    using var http = new HttpClient { BaseAddress = new Uri(serviceUrl.TrimEnd('/') + "/") };
+    if (!string.IsNullOrEmpty(apiKey))
+        http.DefaultRequestHeaders.Add("X-Api-Key", apiKey);
+
+    // ── POST /api/jobs ────────────────────────────────────────────────────────
+
+    var requestBody = new { video_url = videoUrl, config };
+    var jsonOptions = new JsonSerializerOptions
+    {
+        PropertyNamingPolicy        = JsonNamingPolicy.SnakeCaseLower,
+        DefaultIgnoreCondition      = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    Console.WriteLine("⏳ Submitting job…");
+    HttpResponseMessage postResponse;
+    try
+    {
+        postResponse = await http.PostAsJsonAsync("api/jobs", requestBody, jsonOptions, ct);
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.Error.WriteLine($"❌ Could not reach service at {serviceUrl}: {ex.Message}");
+        return 1;
+    }
+
+    if (!postResponse.IsSuccessStatusCode)
+    {
+        string body = await postResponse.Content.ReadAsStringAsync(ct);
+        Console.Error.WriteLine($"❌ Server returned {(int)postResponse.StatusCode}: {body}");
+        return 1;
+    }
+
+    // Parse the job ID from the response.
+    using var doc    = await JsonDocument.ParseAsync(
+        await postResponse.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+    string? jobId    = doc.RootElement.TryGetProperty("id", out var idProp) ? idProp.GetString() : null;
+    if (string.IsNullOrEmpty(jobId))
+    {
+        Console.Error.WriteLine("❌ Could not parse job ID from server response.");
+        return 1;
+    }
+
+    Console.WriteLine($"✅ Job accepted — ID: {jobId}");
+    Console.WriteLine("⏳ Polling for completion…");
+
+    // ── Poll GET /api/jobs/{id} ───────────────────────────────────────────────
+
+    int lastPercent = -1;
+    while (true)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(5), ct);
+
+        HttpResponseMessage statusResponse;
+        try
+        {
+            statusResponse = await http.GetAsync($"api/jobs/{jobId}", ct);
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.Error.WriteLine($"❌ Lost connection to service: {ex.Message}");
+            return 1;
+        }
+
+        if (!statusResponse.IsSuccessStatusCode)
+        {
+            string body = await statusResponse.Content.ReadAsStringAsync(ct);
+            Console.Error.WriteLine($"❌ Status poll returned {(int)statusResponse.StatusCode}: {body}");
+            return 1;
+        }
+
+        using var statusDoc = await JsonDocument.ParseAsync(
+            await statusResponse.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        var root = statusDoc.RootElement;
+
+        string status  = root.TryGetProperty("status",  out var s) ? s.GetString() ?? "" : "";
+        string message = root.TryGetProperty("message", out var m) ? m.GetString() ?? "" : "";
+        int    percent = root.TryGetProperty("percent", out var p) ? p.GetInt32() : 0;
+
+        if (percent != lastPercent)
+        {
+            Console.WriteLine($"⏳ [{percent,3}%] {message}");
+            lastPercent = percent;
+        }
+
+        if (status.Equals("Completed", StringComparison.OrdinalIgnoreCase))
+            break;
+
+        if (status.Equals("Failed", StringComparison.OrdinalIgnoreCase))
+        {
+            string error = root.TryGetProperty("error", out var e) ? e.GetString() ?? "" : "Unknown error";
+            Console.Error.WriteLine($"❌ Job failed: {error}");
+            return 1;
+        }
+    }
+
+    // ── Download GET /api/jobs/{id}/page ──────────────────────────────────────
+
+    Console.WriteLine("⏳ Downloading HTML page…");
+    HttpResponseMessage pageResponse;
+    try
+    {
+        pageResponse = await http.GetAsync($"api/jobs/{jobId}/page", ct);
+    }
+    catch (HttpRequestException ex)
+    {
+        Console.Error.WriteLine($"❌ Could not download page: {ex.Message}");
+        return 1;
+    }
+
+    if (!pageResponse.IsSuccessStatusCode)
+    {
+        string body = await pageResponse.Content.ReadAsStringAsync(ct);
+        Console.Error.WriteLine($"❌ Page download returned {(int)pageResponse.StatusCode}: {body}");
+        return 1;
+    }
+
+    // Determine output path.
+    string savePath = outputFile
+        ?? Path.Combine(Directory.GetCurrentDirectory(), $"podslacker_{jobId}.html");
+    Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+
+    await using var fileStream = File.OpenWrite(savePath);
+    await pageResponse.Content.CopyToAsync(fileStream, ct);
+
+    Console.WriteLine();
+    Console.WriteLine("─────────────────────────────────────────────");
+    Console.WriteLine($"  HTML     : {savePath}");
+    Console.WriteLine($"  Job ID   : {jobId}");
+    Console.WriteLine($"  Service  : {serviceUrl}");
+    Console.WriteLine("─────────────────────────────────────────────");
+    return 0;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-static string RequireEnv(string varName, string label)
-{
-    string? value = Environment.GetEnvironmentVariable(varName);
-    if (string.IsNullOrEmpty(value))
-    {
-        Console.Error.WriteLine($"Error: {label} environment variable '{varName}' is not set.");
-        Environment.Exit(1);
-    }
-    return value!;
-}
 
 static string? FindDefaultConfig()
 {
@@ -298,26 +410,6 @@ static string? FindDefaultConfig()
     }
     return null;
 }
-
-// ── 'status' subcommand (remote job polling) ──────────────────────────────────
-
-var statusCmd       = new Command("status", "Check the status of a remote job");
-var jobIdArg        = new Argument<string>("job-id") { Description = "Job ID returned by the remote server" };
-var statusServerOpt = new Option<string>("--server")
-    { Description = "PodSlacker web service URL", Required = true };
-statusCmd.Add(jobIdArg);
-statusCmd.Add(statusServerOpt);
-statusCmd.SetAction(async (ParseResult result, CancellationToken ct) =>
-{
-    string jobId  = result.GetValue(jobIdArg)!;
-    string server = result.GetValue(statusServerOpt)!;
-    // TODO (Phase 4): GET /api/jobs/{jobId} from the web service.
-    Console.WriteLine($"🌐 Checking job {jobId} on {server}");
-    Console.WriteLine("   (Remote status checking not yet implemented)");
-    await Task.CompletedTask;
-    return 1;
-});
-root.Add(statusCmd);
 
 // ── Entry point ───────────────────────────────────────────────────────────────
 

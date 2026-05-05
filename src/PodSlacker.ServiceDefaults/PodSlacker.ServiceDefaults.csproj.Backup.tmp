@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>PodSlacker.ServiceDefaults</RootNamespace>
+    <!--
+      IsAspireSharedProject is a workload-era property — omitting it avoids
+      triggering NETSDK1228 on machines that still have the deprecated workload installed.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      FrameworkReference gives us WebApplication, HealthCheckOptions, etc.
+      from the ASP.NET Core shared framework without switching the whole SDK.
+    -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      IHostApplicationBuilder lives in Microsoft.Extensions.Hosting.Abstractions.
+      Adding the full Hosting package makes it available to this non-web SDK project.
+    -->
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
+
+    <!-- HTTP resilience and service discovery -->
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" Version="10.5.0" />
+    <!-- Pin to 10.0.0 — 9.7.0 isn't on NuGet, so NuGet resolves to 10.0.0 anyway -->
+    <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" Version="10.5.0" />
+
+    <!-- OpenTelemetry -->
+    <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.2" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.15.1" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+  </ItemGroup>
+
+</Project>
