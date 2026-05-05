@@ -1,0 +1,15 @@
+<Router AppAssembly="typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Not found — PodSlacker</PageTitle>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <div class="alert alert-warning mt-4">
+                <h4>Page not found</h4>
+                <p>The page you requested does not exist. <a href="/">Go home</a></p>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

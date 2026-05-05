@@ -9,29 +9,53 @@
     <RootNamespace>PodSlacker.AppHost</RootNamespace>
     <AssemblyName>podslacker-host</AssemblyName>
     <!--
-      IsAspireHost is a workload-era property — omitting it avoids NETSDK1228
-      on machines that still have the deprecated Aspire workload installed.
-      The NuGet-based Aspire.Hosting.AppHost package works without it.
+      Do NOT set IsAspireHost=true — that is a workload-era property that
+      triggers NETSDK1228 on machines with the deprecated workload installed.
     -->
   </PropertyGroup>
 
   <ItemGroup>
-    <!--
-      Aspire.Hosting.AppHost 9.3.1 ships its own source generator that emits
-      the Projects.* proxy types.  Aspire 9.x targets net8+, so net10 is supported
-      as an orchestrated app; the AppHost itself can also run on net10.
-      Update to a newer Aspire release when one is available for .NET 10 RTM.
-    -->
+    <!-- Core Aspire hosting package -->
     <PackageReference Include="Aspire.Hosting.AppHost" Version="13.2.4" />
+
+    <!--
+      DCP (Developer Control Plane) — the binary that actually launches and
+      monitors the orchestrated processes. Platform-specific; pick the variant
+      that matches the build machine.
+    -->
+    <PackageReference Include="Aspire.Hosting.Orchestration.win-x64"   Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="Aspire.Hosting.Orchestration.osx-arm64" Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'" />
+    <PackageReference Include="Aspire.Hosting.Orchestration.osx-x64"   Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'" />
+    <PackageReference Include="Aspire.Hosting.Orchestration.linux-x64" Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+
+    <!--
+      Aspire Dashboard — the browser UI that shows traces, logs, and resource
+      status. Also platform-specific.
+    -->
+    <PackageReference Include="Aspire.Dashboard.Sdk.win-x64"   Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="Aspire.Dashboard.Sdk.osx-arm64" Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'Arm64'" />
+    <PackageReference Include="Aspire.Dashboard.Sdk.osx-x64"   Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture)' == 'X64'" />
+    <PackageReference Include="Aspire.Dashboard.Sdk.linux-x64" Version="13.2.4"
+                      Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
   </ItemGroup>
 
   <ItemGroup>
     <!--
-      IsAspireProjectResource instructs the Aspire source generator to emit the
-      Projects.PodSlacker_ApiService proxy class used in Program.cs.
-      This is item metadata on the reference — it does NOT trigger NETSDK1228.
+      IsAspireProjectResource tells the Aspire source generator to emit the
+      Projects.* proxy types used in Program.cs. This is item metadata only
+      and does NOT trigger NETSDK1228.
     -->
     <ProjectReference Include="..\PodSlacker.ApiService\PodSlacker.ApiService.csproj">
+      <IsAspireProjectResource>true</IsAspireProjectResource>
+    </ProjectReference>
+    <ProjectReference Include="..\PodSlacker.Web\PodSlacker.Web.csproj">
       <IsAspireProjectResource>true</IsAspireProjectResource>
     </ProjectReference>
   </ItemGroup>

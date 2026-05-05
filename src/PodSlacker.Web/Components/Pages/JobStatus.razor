@@ -1,0 +1,154 @@
+@page "/job/{JobId}"
+@rendermode InteractiveServer
+@inject PodSlackerApiClient ApiClient
+@implements IAsyncDisposable
+
+<PageTitle>@(status is null ? "Loading…" : $"{StatusIcon} {status.Status}") — PodSlacker</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        <div class="d-flex align-items-center gap-2 mb-4">
+            <a href="/" class="btn btn-outline-secondary btn-sm">← New job</a>
+            <span class="text-muted small font-monospace">Job: @JobId</span>
+        </div>
+
+        @if (status is null && !loadFailed)
+        {
+            <div class="d-flex align-items-center gap-3 p-4">
+                <div class="spinner-border text-primary" role="status"></div>
+                <span class="fs-5">Loading job status…</span>
+            </div>
+        }
+        else if (loadFailed)
+        {
+            <div class="alert alert-danger">
+                <strong>Could not load job.</strong> @errorMessage
+                <div class="mt-2">
+                    <button class="btn btn-sm btn-outline-danger" @onclick="RetryAsync">Retry</button>
+                </div>
+            </div>
+        }
+        else if (status is not null)
+        {
+            <div class="card shadow-sm mb-3">
+                <div class="card-body p-4">
+
+                    <h2 class="card-title h4 mb-1">
+                        @StatusIcon @status.Status
+                    </h2>
+                    <p class="text-muted mb-3">@status.Message</p>
+
+                    @if (status.Status is "Queued" or "Running")
+                    {
+                        <div class="progress mb-2" style="height: 1.75rem;" role="progressbar"
+                             aria-valuenow="@status.Percent" aria-valuemin="0" aria-valuemax="100">
+                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                 style="width: @(status.Percent)%">
+                                @status.Percent%
+                            </div>
+                        </div>
+                        <p class="text-muted small mb-0">Checking for updates every 5 seconds…</p>
+                    }
+
+                    @if (status.Status == "Completed")
+                    {
+                        <a class="btn btn-success" href="/download/@JobId" target="_blank">
+                            ⬇️ Download HTML Page
+                        </a>
+                    }
+
+                    @if (status.Status == "Failed")
+                    {
+                        <div class="alert alert-danger mb-0 mt-2">
+                            <strong>Pipeline error:</strong> @status.Error
+                        </div>
+                    }
+
+                </div>
+            </div>
+
+            @if (!string.IsNullOrEmpty(status.VideoUrl))
+            {
+                <p class="text-muted small">
+                    Source: <a href="@status.VideoUrl" target="_blank" rel="noopener">@status.VideoUrl</a>
+                </p>
+            }
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public string JobId { get; set; } = "";
+
+    private JobStatusDto? status;
+    private bool          loadFailed;
+    private string?       errorMessage;
+    private PeriodicTimer? timer;
+    private CancellationTokenSource cts = new();
+
+    private string StatusIcon => status?.Status switch
+    {
+        "Queued"    => "⏳",
+        "Running"   => "⚙️",
+        "Completed" => "✅",
+        "Failed"    => "❌",
+        _           => "❓",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await PollOnceAsync();
+
+        if (status?.Status is not ("Completed" or "Failed"))
+            _ = PollLoopAsync();
+    }
+
+    private async Task PollLoopAsync()
+    {
+        timer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cts.Token))
+            {
+                await PollOnceAsync();
+                await InvokeAsync(StateHasChanged);
+
+                if (status?.Status is "Completed" or "Failed")
+                    break;
+            }
+        }
+        catch (OperationCanceledException) { /* component disposed */ }
+    }
+
+    private async Task PollOnceAsync()
+    {
+        try
+        {
+            status    = await ApiClient.GetJobStatusAsync(JobId, cts.Token);
+            loadFailed    = false;
+            errorMessage  = null;
+        }
+        catch (OperationCanceledException) { /* swallow */ }
+        catch (Exception ex)
+        {
+            loadFailed   = true;
+            errorMessage = ex.Message;
+        }
+    }
+
+    private async Task RetryAsync()
+    {
+        loadFailed = false;
+        await PollOnceAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await cts.CancelAsync();
+        cts.Dispose();
+        timer?.Dispose();
+    }
+}

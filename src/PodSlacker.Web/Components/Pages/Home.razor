@@ -1,0 +1,94 @@
+@page "/"
+@rendermode InteractiveServer
+@inject PodSlackerApiClient ApiClient
+@inject NavigationManager Nav
+
+<PageTitle>PodSlacker — Generate Podcast</PageTitle>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+
+        <h1 class="mb-1">Generate a Podcast</h1>
+        <p class="text-muted mb-4">
+            Paste any YouTube URL and PodSlacker will produce an AI-hosted podcast
+            episode complete with a summary, transcript, and audio.
+        </p>
+
+        <div class="card shadow-sm">
+            <div class="card-body p-4">
+
+                @if (errorMessage is not null)
+                {
+                    <div class="alert alert-danger alert-dismissible" role="alert">
+                        <strong>Error:</strong> @errorMessage
+                        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+                    </div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold" for="urlInput">YouTube URL</label>
+                    <input id="urlInput"
+                           class="form-control form-control-lg"
+                           placeholder="https://youtu.be/dQw4w9WgXcQ"
+                           @bind="videoUrl"
+                           @bind:event="oninput"
+                           @onkeydown="OnKeyDown"
+                           disabled="@isSubmitting" />
+                </div>
+
+                <div class="d-grid">
+                    <button class="btn btn-primary btn-lg"
+                            @onclick="SubmitAsync"
+                            disabled="@isSubmitting">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                            <span>Submitting…</span>
+                        }
+                        else
+                        {
+                            <span>🎙️ Generate Podcast</span>
+                        }
+                    </button>
+                </div>
+
+            </div>
+        </div>
+
+        <p class="text-muted small mt-3 text-center">
+            The pipeline runs on the server — you can close this tab and come back
+            if you know the job ID.
+        </p>
+
+    </div>
+</div>
+
+@code {
+    private string videoUrl = "";
+    private bool   isSubmitting;
+    private string? errorMessage;
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter") await SubmitAsync();
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (string.IsNullOrWhiteSpace(videoUrl) || isSubmitting) return;
+
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            string jobId = await ApiClient.SubmitJobAsync(videoUrl.Trim());
+            Nav.NavigateTo($"/job/{jobId}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage  = ex.Message;
+            isSubmitting  = false;
+        }
+    }
+}

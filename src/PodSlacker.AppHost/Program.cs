@@ -2,22 +2,35 @@ using Aspire.Hosting;
 
 // ── PodSlacker Aspire AppHost ─────────────────────────────────────────────────
 //
+// Starts both the API service and the web UI, wires service discovery between
+// them, and opens the Aspire dashboard.
+//
 // Run with:
 //   dotnet run --project src/PodSlacker.AppHost
 //
-// This starts the PodSlacker API service and makes it available for the CLI.
-// Once running, set PODSLACKER_SERVICE_URL to the displayed API address and
-// the CLI will automatically use remote mode:
-//
-//   export PODSLACKER_SERVICE_URL=http://localhost:5100
-//   dotnet run --project src/PodSlacker.Cli -- generate "https://youtu.be/dQw4w9WgXcQ"
+// The dashboard URL is printed at startup (usually http://localhost:18888).
+// The web UI URL is shown in the dashboard under "podslacker-web".
 
 var builder = DistributedApplication.CreateBuilder(args);
 
-// The API service — Aspire assigns a random port in development.
-// The Aspire dashboard will display the URL once it starts.
-builder
+// ── API service ───────────────────────────────────────────────────────────────
+
+var apiService = builder
     .AddProject<Projects.PodSlacker_ApiService>("podslacker-api")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+
+// ── Web UI ────────────────────────────────────────────────────────────────────
+// WithReference injects the API service endpoint into the web app via Aspire's
+// service discovery environment variables (services__podslacker-api__http__0).
+// The web app resolves "http://podslacker-api" to the actual endpoint at runtime.
+
+builder
+    .AddProject<Projects.PodSlacker_Web>("podslacker-web")
+    .WithReference(apiService)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
+    // Clear any manually-set service URL so Aspire's service discovery
+    // (injected by WithReference above) is always used when orchestrated.
+    .WithEnvironment("PODSLACKER_SERVICE_URL", "")
+    .WithExternalHttpEndpoints();   // makes the web UI accessible from the browser
 
 builder.Build().Run();
