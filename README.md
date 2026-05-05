@@ -13,11 +13,28 @@ Built on **.NET 10 / C# 14** with no Python, no ffmpeg, and no yt-dlp required. 
 - **No extra runtimes.** Pure .NET 10 — install the SDK and you're done.
 - **Local TTS by default.** [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs on CPU, produces high-quality 24 kHz WAV, and requires no API key. Switch to OpenAI TTS with one flag.
 - **Any OpenAI-compatible LLM.** Works with OpenRouter, Ollama, Groq, Azure OpenAI, Together AI — or vanilla OpenAI. Each pipeline step can use a different provider.
+- **Three ways to run.** CLI locally, CLI pointing at a remote API service, or a full Blazor web UI — all sharing the same pipeline core.
+- **Aspire orchestration.** Start the API service, web UI, and dashboard in one command with .NET Aspire. No ports to manage.
 - **No yt-dlp dependency.** Transcripts, metadata, and video stream URLs are all resolved natively via [YoutubeExplode](https://github.com/Tyrrrz/YoutubeExplode).
 - **No ffmpeg dependency.** MP3 segments are concatenated as raw bytes; WAV files are written with a hand-written RIFF header.
 - **Self-contained HTML output.** Audio and screenshots are base64-embedded — the page opens in any browser, offline, with no web server.
 - **GitHub Pages publishing.** One flag uploads the page and enables Pages automatically.
 - **Prompt-driven.** All LLM instructions live in plain-text files you can edit freely, with a three-tier fallback so the tool always works out of the box.
+
+---
+
+## Solution Structure
+
+```
+PodSlacker.sln
+└── src/
+    ├── PodSlacker.Core           # Pipeline logic, models, services — shared by all clients
+    ├── PodSlacker.Cli            # Command-line client (local or remote mode)
+    ├── PodSlacker.ApiService     # ASP.NET Core Minimal API — runs the pipeline as a web service
+    ├── PodSlacker.Web            # Blazor Server web UI — submits jobs and polls for results
+    ├── PodSlacker.ServiceDefaults# Shared health checks, OTEL, and service discovery wiring
+    └── PodSlacker.AppHost        # .NET Aspire host — orchestrates ApiService + Web together
+```
 
 ---
 
@@ -76,6 +93,106 @@ dotnet run --project PodSlacker.Cli -c Release -- generate \
 
 ---
 
+## Running as a Web Service
+
+PodSlacker can run as a persistent REST API that accepts jobs from either the CLI or the Blazor web UI. There are two ways to start it.
+
+### Option A — .NET Aspire (recommended for development)
+
+Aspire starts the API service and the web UI together, assigns ports automatically, and opens a dashboard showing live logs, traces, and resource status.
+
+```bash
+dotnet run --project src/PodSlacker.AppHost
+```
+
+The Aspire dashboard opens at **http://localhost:18888**. The web UI URL is shown in the dashboard under `podslacker-web` — click it to open the browser interface where you can paste a YouTube URL and track the job in real time.
+
+> **Note:** Do not set `PODSLACKER_SERVICE_URL` when using Aspire. The AppHost clears it automatically and wires the web UI to the API via service discovery.
+
+### Option B — Manual startup
+
+Start the API service first, then point the CLI or web UI at it.
+
+```bash
+# Terminal 1 — start the API
+export OPENROUTER_API_KEY=sk-or-...
+export PODSLACKER_API_KEY=my-secret   # optional — enables X-Api-Key auth
+dotnet run --project src/PodSlacker.ApiService
+
+# Terminal 2 — use the CLI in remote mode
+export PODSLACKER_SERVICE_URL=http://localhost:5100   # use the HTTP port shown at startup
+export PODSLACKER_API_KEY=my-secret                   # must match the server's value if set
+dotnet run --project src/PodSlacker.Cli -- generate \
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+
+# Or start the web UI pointing at the running API
+export PODSLACKER_SERVICE_URL=http://localhost:5100
+dotnet run --project src/PodSlacker.Web
+```
+
+### API Endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/jobs` | Submit a new job; returns `202 Accepted` with a job ID |
+| `GET` | `/api/jobs/{id}` | Poll job status (Queued / Running / Completed / Failed) |
+| `GET` | `/api/jobs/{id}/page` | Download the generated HTML page once completed |
+| `GET` | `/health` | Health check (no auth required) |
+| `GET` | `/alive` | Liveness check (no auth required) |
+
+#### Authentication
+
+Set `PODSLACKER_API_KEY` on the API service to require an `X-Api-Key` header on all requests. If the variable is unset the API runs without authentication (fine for local dev).
+
+#### POST /api/jobs body
+
+```json
+{
+  "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "config": {
+    "hosts": 2,
+    "tts_engine": "kokoro"
+  }
+}
+```
+
+All `config` fields are optional — omitted fields use the server's compiled defaults. The server always overrides `output_dir` (uses a temp directory) and ignores `publish_github`.
+
+#### GET /api/jobs/{id} response
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "video_url": "https://...",
+  "status": "Running",
+  "message": "Generating podcast script…",
+  "percent": 42,
+  "error": null,
+  "page_url": null
+}
+```
+
+`status` is one of `Queued`, `Running`, `Completed`, `Failed`. `page_url` is populated (pointing at `/api/jobs/{id}/page`) only when status is `Completed`.
+
+---
+
+## CLI Remote Mode
+
+When `PODSLACKER_SERVICE_URL` is set the CLI automatically delegates to the remote API instead of running the pipeline locally. All the usual `generate` flags (LLM provider, TTS engine, voices, etc.) are forwarded to the server in the request body.
+
+```bash
+export PODSLACKER_SERVICE_URL=http://localhost:5100
+export PODSLACKER_API_KEY=my-secret   # if server requires auth
+
+dotnet run --project PodSlacker.Cli -- generate \
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  --output-file ~/podcasts/episode.html
+```
+
+The CLI submits the job, polls every 5 seconds printing progress, then downloads the finished HTML page. `--output-file` controls where the HTML is saved (defaults to `podslacker_<jobId>.html` in the current directory).
+
+---
+
 ## Prerequisites
 
 | Requirement | Version | Notes |
@@ -96,7 +213,7 @@ cd src
 dotnet build PodSlacker.sln -c Release
 ```
 
-To publish a self-contained executable:
+To publish a self-contained CLI executable:
 
 ```bash
 # Windows x64
@@ -159,14 +276,14 @@ Use `--config /path/to/custom.json` to load a different file.
 
 ```
 podslacker generate <url> [options]
-podslacker status <job-id> --server <url>
 ```
 
 ### General
 
 | Flag | Default | Description |
 |---|---|---|
-| `--output-dir, -o DIR` | `outputs` | Directory for all generated files |
+| `--output-dir, -o DIR` | `outputs` | Directory for all generated files (local mode only) |
+| `--output-file FILE` | `podslacker_<id>.html` | Where to save the HTML in remote mode |
 | `--hosts {1,2}` | `2` | `1` = solo monologue, `2` = two-host dialogue |
 | `--host1-name NAME` | `MIKE` | Name for the first (or only) host |
 | `--host2-name NAME` | `JORDAN` | Name for the second host |
@@ -193,7 +310,7 @@ podslacker status <job-id> --server <url>
 
 To use plain OpenAI instead, pass `--llm-base-url` *(omit for OpenAI)*, `--llm-model gpt-4o`, and `--llm-api-key-env OPENAI_API_KEY`.
 
-Each pipeline step (summary, script, key-moments) can override these independently using `--summary-model`, `--summary-base-url`, `--summary-api-key-env`, and equivalents for `--script-*` and `--key-moments-*`.
+Each pipeline step (summary, script generation, key-moment identification) can override these independently using `--summary-model`, `--summary-base-url`, `--summary-api-key-env`, and equivalents for `--script-*` and `--key-moments-*`.
 
 ### TTS Engine
 
@@ -317,11 +434,21 @@ dotnet run --project PodSlacker.Cli -c Release -- generate \
   --output-dir ~/podcasts
 ```
 
+**Submit to a remote API service and save the result:**
+```bash
+export PODSLACKER_SERVICE_URL=http://localhost:5100
+dotnet run --project PodSlacker.Cli -c Release -- generate \
+  "https://www.youtube.com/watch?v=dQw4w9WgXcQ" \
+  --output-file ~/podcasts/episode.html
+```
+
 ---
 
 ## Architecture
 
-The pipeline runs seven stages in sequence, reporting progress via an `IProgress<PipelineProgress>` sink (used by the CLI progress line and, in future, an SSE stream from a web API).
+### Pipeline
+
+The pipeline runs seven stages in sequence, reporting progress via an `IProgress<PipelineProgress>` sink. `PodSlacker.Core` owns all pipeline logic and is shared by the CLI, the API service, and any future client.
 
 ```
 YouTube URL
@@ -365,11 +492,45 @@ YouTube URL
 https://<user>.github.io/<repo>/*_page.html
 ```
 
+### Multi-tier deployment
+
+```
+┌─────────────────────┐     ┌─────────────────────┐
+│   PodSlacker.Cli    │     │   PodSlacker.Web     │
+│  (terminal client)  │     │  (Blazor Server UI)  │
+└────────┬────────────┘     └──────────┬───────────┘
+         │  PODSLACKER_SERVICE_URL       │  Aspire service discovery
+         │  (manual) or Aspire           │  → http://podslacker-api
+         │                               │
+         └──────────────┬────────────────┘
+                        │ REST  POST /api/jobs
+                        │      GET  /api/jobs/{id}
+                        │      GET  /api/jobs/{id}/page
+                        ▼
+         ┌──────────────────────────────┐
+         │    PodSlacker.ApiService     │
+         │  ASP.NET Core Minimal API    │
+         │  • In-memory job store       │
+         │  • Background PipelineRunner │
+         │  • 1-hour job TTL eviction   │
+         └──────────────┬───────────────┘
+                        │
+                        ▼
+         ┌──────────────────────────────┐
+         │      PodSlacker.Core         │
+         │  Pipeline + services (shared)│
+         └──────────────────────────────┘
+```
+
+When running locally (no `PODSLACKER_SERVICE_URL`), the CLI calls `PodSlacker.Core` directly in-process. When `PODSLACKER_SERVICE_URL` is set (or when the Blazor web UI is used), the pipeline runs inside `PodSlacker.ApiService` and the caller just polls for the result.
+
 ### Key design decisions
 
 **`Microsoft.Extensions.AI` for LLM abstraction.** The `IChatClient` interface means OpenAI, OpenRouter, Ollama, and Azure OpenAI all work without any changes to service code. The caller wires up the concrete client; the pipeline never sees a provider name.
 
 **Per-step LLM clients.** Summary, script generation, and key-moment identification each get their own `IChatClient`, built from their own base URL and API key env var. When a step's settings match the base config, the same client instance is reused.
+
+**`IServiceScopeFactory` in background tasks.** `PipelineRunner` injects `IServiceScopeFactory` rather than `IServiceProvider` directly. Each background job creates its own DI scope, so scoped services (including `PodSlackerPipeline`) are resolved and disposed correctly without outliving the HTTP request scope that created the job.
 
 **Env-var key references.** API keys are never passed as CLI arguments — only the *name* of the environment variable is passed. Secrets stay out of shell history and process listings.
 
@@ -377,7 +538,9 @@ https://<user>.github.io/<repo>/*_page.html
 
 **Kokoro model management.** The 320 MB `kokoro.onnx` model is downloaded once to `AppContext.BaseDirectory` via a streamed HTTP download with 10%-bucket progress logging, using an atomic `.download → rename` pattern so a cancelled download never leaves a corrupt file.
 
-**Embedded prompts.** All four system prompts are embedded resources in `PodSlacker.Core.dll`, so the CLI, a future web API, and Azure Functions all share the same canonical prompts with no file-copying during deployment. Users can override at three levels: CLI flag → `prompts/` folder next to the executable → embedded resource.
+**Embedded prompts.** All four system prompts are embedded resources in `PodSlacker.Core.dll`, so the CLI, the web API, and any future clients share the same canonical prompts with no file-copying during deployment.
+
+**NuGet-based Aspire (no workload).** `PodSlacker.AppHost` uses `Aspire.Hosting.AppHost` and the platform-specific DCP/Dashboard NuGet packages directly, avoiding the deprecated `IsAspireHost` workload property that triggers `NETSDK1228` on .NET 10.
 
 ---
 
