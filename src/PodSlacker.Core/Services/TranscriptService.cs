@@ -203,7 +203,13 @@ public sealed class TranscriptService(ILogger<TranscriptService> logger)
     private async Task<(string, List<TimedTranscriptEntry>)> FetchViaInternalApiAsync(
         HttpClient client, string videoId, CancellationToken ct)
     {
-        const string ApiKey = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
+        // The WEB client key is YouTube's own public key embedded in every page
+        // load — it is not a secret, but we still read it from an environment
+        // variable so it can be rotated without a code change if YouTube ever
+        // revokes this value.  The fallback keeps things working out of the box.
+        string apiKey =
+            Environment.GetEnvironmentVariable("YOUTUBE_API_KEY")
+            ?? "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8";
 
         var payload = new
         {
@@ -221,7 +227,7 @@ public sealed class TranscriptService(ILogger<TranscriptService> logger)
         };
 
         using var req = new HttpRequestMessage(HttpMethod.Post,
-            $"https://www.youtube.com/youtubei/v1/player?key={ApiKey}&prettyPrint=false")
+            $"https://www.youtube.com/youtubei/v1/player?key={apiKey}&prettyPrint=false")
         {
             Content = new StringContent(
                 JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"),

@@ -1,23 +1,36 @@
 @page "/job/{JobId}"
 @rendermode InteractiveServer
 @inject PodSlackerApiClient ApiClient
+@inject NavigationManager Nav
+@inject IJSRuntime JS
 @implements IAsyncDisposable
 
-<PageTitle>@(status is null ? "Loading…" : $"{StatusIcon} {status.Status}") — PodSlacker</PageTitle>
+<PageTitle>@PageTitleText — PodSlacker</PageTitle>
 
-<div class="row justify-content-center">
-    <div class="col-lg-7">
+<div class="row justify-content-center mt-2">
+    <div class="col-lg-6 col-md-8">
 
-        <div class="d-flex align-items-center gap-2 mb-4">
+        <div class="d-flex align-items-center gap-2 mb-4 flex-wrap">
             <a href="/" class="btn btn-outline-secondary btn-sm">← New job</a>
-            <span class="text-muted small font-monospace">Job: @JobId</span>
+            <span class="ps-job-id">@JobId</span>
+            <button class="ps-copy-btn @(copied ? "copied" : "")"
+                    @onclick="CopyUrlAsync" title="Copy job URL">
+                @if (copied)
+                {
+                    <span>✓ Copied!</span>
+                }
+                else
+                {
+                    <span>⎘ Copy URL</span>
+                }
+            </button>
         </div>
 
         @if (status is null && !loadFailed)
         {
             <div class="d-flex align-items-center gap-3 p-4">
                 <div class="spinner-border text-primary" role="status"></div>
-                <span class="fs-5">Loading job status…</span>
+                <span class="fs-5 text-muted">Loading job status…</span>
             </div>
         }
         else if (loadFailed)
@@ -25,7 +38,7 @@
             <div class="alert alert-danger">
                 <strong>Could not load job.</strong> @errorMessage
                 <div class="mt-2">
-                    <button class="btn btn-sm btn-outline-danger" @onclick="RetryAsync">Retry</button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="RetryAsync">Retry</button>
                 </div>
             </div>
         }
@@ -34,18 +47,25 @@
             <div class="card shadow-sm mb-3">
                 <div class="card-body p-4">
 
-                    <h2 class="card-title h4 mb-1">
-                        @StatusIcon @status.Status
+                    @if (!string.IsNullOrEmpty(status.Title))
+                    {
+                        <p class="font-mono small mb-2" style="color: var(--ps-accent2);">🎬 @status.Title</p>
+                    }
+                    <h2 class="h4 mb-1">
+                        @StatusIcon <span class="text-accent fw-semibold">@StatusLabel</span>
                     </h2>
                     <p class="text-muted mb-3">@status.Message</p>
 
                     @if (status.Status is "Queued" or "Running")
                     {
-                        <div class="progress mb-2" style="height: 1.75rem;" role="progressbar"
+                        <div class="progress mb-2" style="height: 1.5rem;" role="progressbar"
                              aria-valuenow="@status.Percent" aria-valuemin="0" aria-valuemax="100">
                             <div class="progress-bar progress-bar-striped progress-bar-animated"
                                  style="width: @(status.Percent)%">
-                                @status.Percent%
+                                @if (status.Percent > 8)
+                                {
+                                    <span>@status.Percent%</span>
+                                }
                             </div>
                         </div>
                         <p class="text-muted small mb-0">Checking for updates every 5 seconds…</p>
@@ -53,9 +73,18 @@
 
                     @if (status.Status == "Completed")
                     {
-                        <a class="btn btn-success" href="/download/@JobId" target="_blank">
-                            ⬇️ Download HTML Page
-                        </a>
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-success" href="@DownloadUrl" target="_blank">
+                                ⬇️ Download Your SlackCast
+                            </a>
+                            @if (!string.IsNullOrEmpty(status.GitHubPagesUrl))
+                            {
+                                <a class="btn btn-outline-secondary" href="@status.GitHubPagesUrl"
+                                   target="_blank" rel="noopener">
+                                    🌐 View on GitHub Pages
+                                </a>
+                            }
+                        </div>
                     }
 
                     @if (status.Status == "Failed")
@@ -71,7 +100,8 @@
             @if (!string.IsNullOrEmpty(status.VideoUrl))
             {
                 <p class="text-muted small">
-                    Source: <a href="@status.VideoUrl" target="_blank" rel="noopener">@status.VideoUrl</a>
+                    Source: <a href="@status.VideoUrl" target="_blank" rel="noopener"
+                               style="color: var(--ps-accent);">@status.VideoUrl</a>
                 </p>
             }
         }
@@ -85,8 +115,20 @@
     private JobStatusDto? status;
     private bool          loadFailed;
     private string?       errorMessage;
+    private bool          copied;
     private PeriodicTimer? timer;
     private CancellationTokenSource cts = new();
+
+    private string DownloadUrl => string.IsNullOrEmpty(status?.Title)
+        ? $"/download/{JobId}"
+        : $"/download/{JobId}?title={Uri.EscapeDataString(status.Title)}";
+
+    private string PageTitleText => status switch
+    {
+        null                                         => "Loading…",
+        { Title: { Length: > 0 } t }                => $"{StatusIcon} {t}",
+        _                                            => $"{StatusIcon} Job {StatusLabel}",
+    };
 
     private string StatusIcon => status?.Status switch
     {
@@ -95,6 +137,15 @@
         "Completed" => "✅",
         "Failed"    => "❌",
         _           => "❓",
+    };
+
+    private string StatusLabel => status?.Status switch
+    {
+        "Queued"    => "Queued",
+        "Running"   => "Running",
+        "Completed" => "Completed",
+        "Failed"    => "Failed",
+        _           => status?.Status ?? "Unknown",
     };
 
     protected override async Task OnInitializedAsync()
@@ -126,9 +177,9 @@
     {
         try
         {
-            status    = await ApiClient.GetJobStatusAsync(JobId, cts.Token);
-            loadFailed    = false;
-            errorMessage  = null;
+            status       = await ApiClient.GetJobStatusAsync(JobId, cts.Token);
+            loadFailed   = false;
+            errorMessage = null;
         }
         catch (OperationCanceledException) { /* swallow */ }
         catch (Exception ex)
@@ -143,6 +194,18 @@
         loadFailed = false;
         await PollOnceAsync();
         await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task CopyUrlAsync()
+    {
+        string url = Nav.ToAbsoluteUri($"/job/{JobId}").ToString();
+        await JS.InvokeVoidAsync("navigator.clipboard.writeText", url);
+        copied = true;
+        StateHasChanged();
+        // Reset label after 2 seconds
+        await Task.Delay(2000);
+        copied = false;
+        StateHasChanged();
     }
 
     public async ValueTask DisposeAsync()

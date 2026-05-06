@@ -26,6 +26,21 @@ public sealed class JobRecord
     public string     Id          { get; init; } = Guid.NewGuid().ToString();
     /// <summary>YouTube URL submitted with the job.</summary>
     public string     VideoUrl    { get; init; } = string.Empty;
+    /// <summary>Video title; populated once the pipeline fetches it from YouTube.</summary>
+    public string?    Title       { get; set; }
+    // ── User-selected generation parameters ──────────────────────────────────
+    /// <summary>1 = monologue, 2 = dialogue.</summary>
+    public int        Hosts       { get; init; } = 2;
+    /// <summary>Display name for the first (or sole) host.</summary>
+    public string     Host1Name   { get; init; } = "JORDAN";
+    /// <summary>Display name for the second host; only used when <see cref="Hosts"/> is 2.</summary>
+    public string     Host2Name   { get; init; } = "MIKE";
+    /// <summary>LLM model ID used for this job.</summary>
+    public string     LlmModel    { get; init; } = string.Empty;
+    /// <summary>Number of key-moment frames requested.</summary>
+    public int        NumFrames   { get; init; } = 6;
+    /// <summary>Whether GitHub Pages publishing was requested.</summary>
+    public bool       PublishGitHub { get; init; }
     /// <summary>Current pipeline status.</summary>
     public JobStatus  Status      { get; set; }  = JobStatus.Queued;
     /// <summary>Most recent progress message from the pipeline.</summary>
@@ -35,7 +50,9 @@ public sealed class JobRecord
     /// <summary>Error message if <see cref="Status"/> is <see cref="JobStatus.Failed"/>.</summary>
     public string?    Error       { get; set; }
     /// <summary>Raw HTML bytes of the generated page; available once status is Completed.</summary>
-    public byte[]?    HtmlBytes   { get; set; }
+    public byte[]?    HtmlBytes      { get; set; }
+    /// <summary>Public GitHub Pages URL; set only when the job was submitted with PublishGithub=true and publishing succeeded.</summary>
+    public string?    GitHubPagesUrl { get; set; }
     /// <summary>UTC time this record was created.</summary>
     public DateTime   CreatedAt   { get; init; } = DateTime.UtcNow;
     /// <summary>UTC time the pipeline last reported progress.</summary>
@@ -69,6 +86,8 @@ public sealed class JobStatusResponse
     public string     Id         { get; init; } = string.Empty;
     /// <summary>YouTube URL.</summary>
     public string     VideoUrl   { get; init; } = string.Empty;
+    /// <summary>Video title; available once the pipeline has fetched it.</summary>
+    public string?    Title      { get; init; }
     /// <summary>Current status.</summary>
     public JobStatus  Status     { get; init; }
     /// <summary>Latest progress message.</summary>
@@ -81,5 +100,23 @@ public sealed class JobStatusResponse
     /// Download URL for the generated HTML page.
     /// Only present when <see cref="Status"/> is <see cref="JobStatus.Completed"/>.
     /// </summary>
-    public string?    PageUrl    { get; init; }
+    public string?    PageUrl        { get; init; }
+    /// <summary>
+    /// Public GitHub Pages URL for the published page.
+    /// Only present when the job was submitted with <c>publish_github: true</c> and publishing succeeded.
+    /// </summary>
+    public string?    GitHubPagesUrl { get; init; }
+    // ── User-selected generation parameters ──────────────────────────────────
+    /// <summary>1 = monologue, 2 = dialogue.</summary>
+    public int        Hosts         { get; init; } = 2;
+    /// <summary>Display name for the first (or sole) host.</summary>
+    public string     Host1Name     { get; init; } = "JORDAN";
+    /// <summary>Display name for the second host; only relevant when <see cref="Hosts"/> is 2.</summary>
+    public string     Host2Name     { get; init; } = "MIKE";
+    /// <summary>LLM model ID used for this job.</summary>
+    public string     LlmModel      { get; init; } = string.Empty;
+    /// <summary>Number of key-moment frames requested.</summary>
+    public int        NumFrames     { get; init; } = 6;
+    /// <summary>Whether GitHub Pages publishing was requested.</summary>
+    public bool       PublishGitHub { get; init; }
 }

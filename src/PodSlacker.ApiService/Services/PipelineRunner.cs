@@ -34,12 +34,8 @@ public sealed class PipelineRunner(
         string tempDir = Path.Combine(Path.GetTempPath(), "podslacker", job.Id);
         Directory.CreateDirectory(tempDir);
 
-        // Override OutputDir and disable GitHub publishing (not needed for API mode).
-        config = config with
-        {
-            OutputDir     = tempDir,
-            PublishGithub = false,
-        };
+        // Override OutputDir; preserve PublishGithub so the web UI can request publishing.
+        config = config with { OutputDir = tempDir };
 
         job.Status    = JobStatus.Running;
         job.Message   = "Starting pipeline…";
@@ -59,6 +55,11 @@ public sealed class PipelineRunner(
 
             var progress = new Progress<PipelineProgress>(p =>
             {
+                // Capture the video title as soon as the pipeline resolves it
+                // (reported on the FetchingTitle step before any LLM calls start).
+                if (p.Title is { Length: > 0 })
+                    job.Title = p.Title;
+
                 job.Status    = JobStatus.Running;
                 job.Message   = p.Message;
                 job.Percent   = p.PercentComplete;
@@ -68,6 +69,10 @@ public sealed class PipelineRunner(
 
             var result = await pipeline.RunAsync(
                 videoUrl, config, chatClient, audioClient, progress);
+
+            // Capture title and GitHub Pages URL from the completed result.
+            job.Title          = result.Title;
+            job.GitHubPagesUrl = result.GitHubPagesUrl;
 
             // Read generated HTML into memory then clean up the temp dir.
             if (result.HtmlPagePath is not null && File.Exists(result.HtmlPagePath))

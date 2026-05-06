@@ -2,44 +2,161 @@
 @rendermode InteractiveServer
 @inject PodSlackerApiClient ApiClient
 @inject NavigationManager Nav
+@implements IAsyncDisposable
 
 <PageTitle>PodSlacker — Generate Podcast</PageTitle>
 
-<div class="row justify-content-center">
+<div class="row g-4 mt-1">
+
+    <!-- ── Left column: submit form ──────────────────────────────────────── -->
     <div class="col-lg-7">
 
-        <h1 class="mb-1">Generate a Podcast</h1>
-        <p class="text-muted mb-4">
-            Paste any YouTube URL and PodSlacker will produce an AI-hosted podcast
-            episode complete with a summary, transcript, and audio.
-        </p>
+        <!-- Hero -->
+        <div class="text-center mb-4">
+            <img src="images/PodSlackerLogo.png" alt="PodSlacker" class="ps-hero-logo mb-3" />
+            <h1 class="ps-hero-title mb-2">Turn any video into a podcast.</h1>
+            <p class="ps-tagline">@currentTagline</p>
+        </div>
 
+        <!-- Error -->
+        @if (errorMessage is not null)
+        {
+            <div class="alert alert-danger alert-dismissible mb-3" role="alert">
+                <strong>Error:</strong> @errorMessage
+                <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+            </div>
+        }
+
+        <!-- Submit card -->
         <div class="card shadow-sm">
             <div class="card-body p-4">
 
-                @if (errorMessage is not null)
-                {
-                    <div class="alert alert-danger alert-dismissible" role="alert">
-                        <strong>Error:</strong> @errorMessage
-                        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
-                    </div>
-                }
-
-                <div class="mb-3">
-                    <label class="form-label fw-semibold" for="urlInput">YouTube URL</label>
+                <!-- URL -->
+                <div class="mb-4">
+                    <label class="form-label ps-section-label" for="urlInput">YouTube URL</label>
                     <input id="urlInput"
                            class="form-control form-control-lg"
-                           placeholder="https://youtu.be/dQw4w9WgXcQ"
+                           placeholder="Paste or type your YouTube URL here (e.g. https://youtu.be/dQw4w9WgXcQ)"
                            @bind="videoUrl"
                            @bind:event="oninput"
                            @onkeydown="OnKeyDown"
                            disabled="@isSubmitting" />
                 </div>
 
+                <!-- Format toggle -->
+                <div class="mb-4">
+                    <div class="ps-section-label mb-2">Format</div>
+                    <div class="ps-toggle-group d-flex gap-2 mb-3" role="group">
+                        <input type="radio" class="btn-check" name="format" id="fmtDialogue"
+                               checked="@(hosts == 2)" @onchange="() => hosts = 2"
+                               disabled="@isSubmitting" />
+                        <label class="btn flex-fill" for="fmtDialogue">
+                            🎭 Dialogue
+                            <div class="small opacity-75 mt-1">Two-host conversation</div>
+                        </label>
+                        <input type="radio" class="btn-check" name="format" id="fmtMonologue"
+                               checked="@(hosts == 1)" @onchange="() => hosts = 1"
+                               disabled="@isSubmitting" />
+                        <label class="btn flex-fill" for="fmtMonologue">
+                            🎤 Monologue
+                            <div class="small opacity-75 mt-1">Solo host</div>
+                        </label>
+                    </div>
+                    <!-- Host name inputs -->
+                    <div class="d-flex gap-2">
+                        <div class="flex-fill">
+                            <label class="form-label small text-muted mb-1" for="host1Input">
+                                @(hosts == 1 ? "Host name" : "Host 1 name")
+                            </label>
+                            <input id="host1Input" class="form-control form-control-sm"
+                                   placeholder="JORDAN"
+                                   @bind="host1Name" disabled="@isSubmitting" />
+                        </div>
+                        @if (hosts == 2)
+                        {
+                            <div class="flex-fill">
+                                <label class="form-label small text-muted mb-1" for="host2Input">Host 2 name</label>
+                                <input id="host2Input" class="form-control form-control-sm"
+                                       placeholder="MIKE"
+                                       @bind="host2Name" disabled="@isSubmitting" />
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- LLM model -->
+                <div class="mb-4">
+                    <label class="form-label ps-section-label" for="modelSelect">AI Model</label>
+                    <select id="modelSelect" class="form-select"
+                            @bind="llmModel" disabled="@isSubmitting">
+                        @foreach (var m in LlmModels)
+                        {
+                            <option value="@m.Id">@m.Label</option>
+                        }
+                    </select>
+                    <div class="text-muted mt-1" style="font-size: 0.75rem;">
+                        All models are free via OpenRouter. Larger = slower but smarter.
+                    </div>
+                </div>
+
+                <!-- Snapshots -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="ps-section-label mb-0">Key-Moment Snapshots</span>
+                        <span class="font-mono text-accent fw-semibold">
+                            @(numFrames == 0 ? "none" : numFrames.ToString())
+                        </span>
+                    </div>
+                    <input type="range" class="form-range" min="0" max="12" step="1"
+                           @bind="numFrames" @bind:event="oninput"
+                           disabled="@isSubmitting" />
+                    <div class="d-flex justify-content-between text-muted"
+                         style="font-size: 0.72rem; margin-top: 2px;">
+                        <span>none</span><span>captures key frames from the video</span><span>12</span>
+                    </div>
+                </div>
+
+                <!-- GitHub Pages -->
+                <div class="mb-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <input type="checkbox" class="form-check-input mt-0" id="ghToggle"
+                               @bind="publishGitHub" disabled="@isSubmitting" />
+                        <label class="form-check-label ps-section-label mb-0" for="ghToggle">
+                            Publish to GitHub Pages
+                        </label>
+                    </div>
+
+                    @if (publishGitHub)
+                    {
+                        <div class="ps-github-fields mt-2 d-flex flex-column gap-2">
+                            <div>
+                                <label class="form-label small text-muted mb-1" for="ghRepo">Repository name</label>
+                                <input id="ghRepo" class="form-control form-control-sm"
+                                       placeholder="podslacker-pages"
+                                       @bind="githubRepo" disabled="@isSubmitting" />
+                            </div>
+                            <div>
+                                <label class="form-label small text-muted mb-1" for="ghToken">
+                                    Personal Access Token
+                                    <span class="opacity-75">(optional — overrides server <code>GITHUB_TOKEN</code>)</span>
+                                </label>
+                                <input id="ghToken" type="password" class="form-control form-control-sm"
+                                       placeholder="ghp_…"
+                                       @bind="githubToken" disabled="@isSubmitting" />
+                                <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                                    Needs <code>repo</code> + <code>pages</code> scopes.
+                                    <a href="https://github.com/settings/tokens" target="_blank"
+                                       rel="noopener" style="color: var(--ps-accent);">Create one ↗</a>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Submit -->
                 <div class="d-grid">
                     <button class="btn btn-primary btn-lg"
-                            @onclick="SubmitAsync"
-                            disabled="@isSubmitting">
+                            @onclick="SubmitAsync" disabled="@isSubmitting">
                         @if (isSubmitting)
                         {
                             <span class="spinner-border spinner-border-sm me-2" role="status"></span>
@@ -56,17 +173,177 @@
         </div>
 
         <p class="text-muted small mt-3 text-center">
-            The pipeline runs on the server — you can close this tab and come back
-            if you know the job ID.
+            Pipeline runs server-side — paste the job URL to check progress later.
         </p>
-
     </div>
+
+    <!-- ── Right column: recent jobs ─────────────────────────────────────── -->
+    <div class="col-lg-5">
+        <div class="ps-sidebar-heading">Recent Jobs</div>
+
+        @if (jobs.Count == 0 && !jobsLoaded)
+        {
+            <p class="text-muted small">Loading…</p>
+        }
+        else if (jobs.Count == 0)
+        {
+            <div class="card">
+                <div class="card-body p-3 text-center text-muted small">
+                    No jobs yet this session.<br />Submit a URL to get started.
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="ps-job-list">
+                @foreach (var job in jobs)
+                {
+                    <a class="ps-job-item" href="/job/@job.Id">
+                        <div class="ps-job-title">
+                            @(string.IsNullOrEmpty(job.Title) ? job.VideoUrl : job.Title)
+                        </div>
+                        <div class="ps-job-meta">
+                            <span class="@BadgeClass(job.Status)">@job.Status</span>
+                            @if (job.Status == "Running")
+                            {
+                                <span>@job.Percent%</span>
+                            }
+                            @if (!string.IsNullOrEmpty(job.GitHubPagesUrl))
+                            {
+                                <span title="Published to GitHub Pages" style="color: var(--ps-accent);">🌐</span>
+                            }
+                            <span class="font-mono" style="opacity:.6;">@job.Id[..8]</span>
+                        </div>
+                        <div class="ps-job-params">
+                            @if (job.Hosts == 1)
+                            {
+                                <span class="ps-param-pill">🎤 @job.Host1Name</span>
+                            }
+                            else
+                            {
+                                <span class="ps-param-pill">🎭 @job.Host1Name &amp; @job.Host2Name</span>
+                            }
+                            <span class="ps-param-pill">@ModelShortName(job.LlmModel)</span>
+                            <span class="ps-param-pill">@(job.NumFrames == 0 ? "no frames" : $"{job.NumFrames} frames")</span>
+                            @if (job.PublishGitHub)
+                            {
+                                <span class="ps-param-pill ps-param-pill-gh">GitHub Pages</span>
+                            }
+                        </div>
+                    </a>
+                }
+            </div>
+            <p class="text-muted small mt-2 text-end">
+                Refreshes every 5 s &nbsp;·&nbsp; in-memory only
+            </p>
+        }
+    </div>
+
 </div>
 
 @code {
-    private string videoUrl = "";
-    private bool   isSubmitting;
+    // ── Models ────────────────────────────────────────────────────────────────
+
+    private sealed record LlmModelOption(string Id, string Label);
+
+    private static readonly LlmModelOption[] LlmModels =
+    [
+        new("openrouter/auto:free",                          "OpenRouter Auto (recommended)"),
+        new("meta-llama/llama-3.3-70b-instruct:free",        "Llama 3.3 70B"),
+        new("google/gemini-2.0-flash-exp:free",              "Gemini 2.0 Flash"),
+        new("deepseek/deepseek-r1:free",                     "DeepSeek R1"),
+        new("mistralai/mistral-small-3.1-24b-instruct:free", "Mistral Small 3.1 24B"),
+        new("qwen/qwen3-235b-a22b:free",                     "Qwen 3 235B"),
+        new("microsoft/phi-4:free",                          "Phi-4 14B"),
+    ];
+
+    // ── Submit form state ─────────────────────────────────────────────────────
+
+    private string  videoUrl      = "";
+    private int     hosts         = 2;
+    private string  host1Name     = "JORDAN";
+    private string  host2Name     = "MIKE";
+    private int     numFrames     = 6;
+    private string  llmModel      = "openrouter/auto:free";
+    private bool    publishGitHub = false;
+    private string  githubRepo    = "podslacker-pages";
+    private string  githubToken   = "";
+    private bool    isSubmitting;
     private string? errorMessage;
+
+    // ── Sidebar state ─────────────────────────────────────────────────────────
+
+    private List<JobStatusDto> jobs       = [];
+    private bool               jobsLoaded = false;
+    private PeriodicTimer?     sidebarTimer;
+    private CancellationTokenSource cts   = new();
+
+    // ── Taglines ──────────────────────────────────────────────────────────────
+
+    private static readonly string[] Taglines =
+    [
+        "AI does the watching. You do the listening.",
+        "Your YouTube backlog, podcasted.",
+        "Turn videos into vibes.",
+        "Slack off smarter — let AI listen for you.",
+        "Transcripts are for quitters.",
+        "One URL. One podcast. Zero effort.",
+        "The laziest way to consume content.",
+        "Audio summaries while you pretend to work.",
+        "Every video deserves a podcast episode.",
+        "Sit back. Press play. Never watch again.",
+    ];
+
+    private string currentTagline = Taglines[0];
+
+    // ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    protected override void OnInitialized()
+    {
+        currentTagline = Taglines[Random.Shared.Next(Taglines.Length)];
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshJobsAsync();
+        _ = PollSidebarAsync();
+    }
+
+    private async Task PollSidebarAsync()
+    {
+        sidebarTimer = new PeriodicTimer(TimeSpan.FromSeconds(5));
+        try
+        {
+            while (await sidebarTimer.WaitForNextTickAsync(cts.Token))
+            {
+                await RefreshJobsAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) { /* component disposed */ }
+    }
+
+    private async Task RefreshJobsAsync()
+    {
+        try
+        {
+            jobs = await ApiClient.GetAllJobsAsync(cts.Token);
+        }
+        catch { /* best-effort; don't crash the page */ }
+        finally
+        {
+            jobsLoaded = true;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await cts.CancelAsync();
+        cts.Dispose();
+        sidebarTimer?.Dispose();
+    }
+
+    // ── Interaction ───────────────────────────────────────────────────────────
 
     private async Task OnKeyDown(KeyboardEventArgs e)
     {
@@ -82,13 +359,52 @@
 
         try
         {
-            string jobId = await ApiClient.SubmitJobAsync(videoUrl.Trim());
+            string jobId = await ApiClient.SubmitJobAsync(
+                videoUrl.Trim(),
+                hosts:             hosts,
+                host1Name:         string.IsNullOrWhiteSpace(host1Name) ? "JORDAN" : host1Name.Trim().ToUpperInvariant(),
+                host2Name:         string.IsNullOrWhiteSpace(host2Name) ? "MIKE"   : host2Name.Trim().ToUpperInvariant(),
+                numFrames:         numFrames,
+                llmModel:          llmModel,
+                publishGitHub:     publishGitHub,
+                githubRepo:        githubRepo,
+                githubTokenValue:  string.IsNullOrWhiteSpace(githubToken) ? null : githubToken);
+
             Nav.NavigateTo($"/job/{jobId}");
         }
         catch (Exception ex)
         {
-            errorMessage  = ex.Message;
-            isSubmitting  = false;
+            errorMessage = ex.Message;
+            isSubmitting = false;
         }
     }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static string BadgeClass(string status) => status switch
+    {
+        "Queued"    => "ps-badge ps-badge-queued",
+        "Running"   => "ps-badge ps-badge-running",
+        "Completed" => "ps-badge ps-badge-completed",
+        "Failed"    => "ps-badge ps-badge-failed",
+        _           => "ps-badge ps-badge-queued",
+    };
+
+    /// <summary>
+    /// Returns a short human-friendly label for an OpenRouter model ID.
+    /// Falls back to the last path segment when the ID isn't in the known list.
+    /// </summary>
+    private static string ModelShortName(string modelId) => modelId switch
+    {
+        "openrouter/auto:free"                              => "Auto",
+        "meta-llama/llama-3.3-70b-instruct:free"           => "Llama 3.3",
+        "google/gemini-2.0-flash-exp:free"                 => "Gemini Flash",
+        "deepseek/deepseek-r1:free"                        => "DeepSeek R1",
+        "mistralai/mistral-small-3.1-24b-instruct:free"    => "Mistral 24B",
+        "qwen/qwen3-235b-a22b:free"                        => "Qwen3 235B",
+        "microsoft/phi-4:free"                             => "Phi-4",
+        _ when !string.IsNullOrEmpty(modelId)
+            => modelId.Split('/').Last().Split(':').First(), // e.g. "my-model"
+        _   => "—",
+    };
 }

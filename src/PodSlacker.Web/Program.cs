@@ -80,12 +80,23 @@ app.MapStaticAssets();
 // Proxies GET /download/{jobId} through to the API service so the browser can
 // download the HTML page as a file without needing to know the API URL or key.
 
-app.MapGet("/download/{jobId}", async (string jobId, PodSlackerApiClient apiClient, CancellationToken ct) =>
+app.MapGet("/download/{jobId}", async (string jobId, string? title, PodSlackerApiClient apiClient, CancellationToken ct) =>
 {
     try
     {
         byte[] bytes = await apiClient.DownloadPageAsync(jobId, ct);
-        return Results.File(bytes, "text/html; charset=utf-8", $"podslacker_{jobId}.html");
+
+        // Build a safe filename: title_first8charsOfJobId.html
+        string safeTitle = string.IsNullOrWhiteSpace(title)
+            ? "slackcast"
+            : System.Text.RegularExpressions.Regex
+                .Replace(title, @"[^\w]+", "_")
+                .Trim('_')
+                .ToLowerInvariant();
+        if (safeTitle.Length > 60) safeTitle = safeTitle[..60].TrimEnd('_');
+        string fileName = $"{safeTitle}_{jobId[..8]}.html";
+
+        return Results.File(bytes, "text/html; charset=utf-8", fileName);
     }
     catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
     {

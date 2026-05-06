@@ -1,0 +1,471 @@
+/* ── PodSlacker dark theme ─────────────────────────────────────────────────── */
+
+:root {
+  --ps-bg:      #0d1117;
+  --ps-surface: #161b22;
+  --ps-border:  #30363d;
+  --ps-accent:  #58a6ff;
+  --ps-accent2: #bc8cff;   /* purple highlight for secondary accents */
+  --ps-text:    #e6edf3;
+  --ps-muted:   #8b949e;
+  --ps-success: #58a6ff;   /* neon blue — keep brand consistent */
+  --ps-danger:  #f85149;
+  --ps-radius:  10px;
+}
+
+/* ── Base ──────────────────────────────────────────────────────────────────── */
+
+html, body {
+  background-color: var(--ps-bg) !important;
+  color: var(--ps-text) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  min-height: 100vh;
+}
+
+/* ── Logo sizes ────────────────────────────────────────────────────────────── */
+
+.ps-nav-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  border-radius: 50%;
+}
+
+.ps-hero-logo {
+  width: clamp(96px, 20vw, 140px);
+  height: clamp(96px, 20vw, 140px);
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(88, 166, 255, 0.45));
+}
+
+/* ── Navbar ────────────────────────────────────────────────────────────────── */
+
+.navbar {
+  background: linear-gradient(135deg, #1a1f35 0%, var(--ps-bg) 100%) !important;
+  border-bottom: 1px solid var(--ps-border) !important;
+}
+
+.navbar-brand {
+  font-size: 1.2rem !important;
+  letter-spacing: -0.02em;
+}
+
+
+.navbar-text {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.72rem !important;
+  color: var(--ps-muted) !important;
+  letter-spacing: 0.04em;
+}
+
+/* ── Cards ─────────────────────────────────────────────────────────────────── */
+
+.card {
+  background-color: var(--ps-surface) !important;
+  border: 1px solid var(--ps-border) !important;
+  border-radius: var(--ps-radius) !important;
+  color: var(--ps-text) !important;
+}
+
+.card-body {
+  background-color: transparent !important;
+}
+
+/* ── Form controls ─────────────────────────────────────────────────────────── */
+
+.form-control, .form-select {
+  background-color: var(--ps-bg) !important;
+  border: 1px solid var(--ps-border) !important;
+  color: var(--ps-text) !important;
+  border-radius: 8px !important;
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: var(--ps-bg) !important;
+  border-color: var(--ps-accent) !important;
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.18) !important;
+  color: var(--ps-text) !important;
+}
+
+.form-control::placeholder {
+  color: var(--ps-muted) !important;
+  opacity: 1;
+}
+
+.form-label {
+  color: var(--ps-text) !important;
+}
+
+/* ── Range slider ──────────────────────────────────────────────────────────── */
+
+.form-range::-webkit-slider-runnable-track {
+  background: var(--ps-border);
+  border-radius: 4px;
+  height: 6px;
+}
+
+.form-range::-webkit-slider-thumb {
+  background: var(--ps-accent);
+  width: 18px;
+  height: 18px;
+  margin-top: -6px;
+  border-radius: 50%;
+  border: none;
+}
+
+.form-range:focus::-webkit-slider-thumb {
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.25);
+}
+
+/* ── Button toggles (dialogue / monologue) ─────────────────────────────────── */
+
+.ps-toggle-group .btn-check + .btn {
+  background-color: var(--ps-bg);
+  border: 1px solid var(--ps-border);
+  color: var(--ps-muted);
+  transition: all 0.18s ease;
+}
+
+.ps-toggle-group .btn-check:checked + .btn {
+  background-color: rgba(88, 166, 255, 0.15);
+  border-color: var(--ps-accent);
+  color: var(--ps-accent);
+  box-shadow: 0 0 0 1px var(--ps-accent);
+}
+
+.ps-toggle-group .btn-check + .btn:hover {
+  border-color: var(--ps-accent);
+  color: var(--ps-text);
+}
+
+/* ── Primary button ────────────────────────────────────────────────────────── */
+
+.btn-primary {
+  background: linear-gradient(135deg, #1a7ed4 0%, var(--ps-accent) 100%) !important;
+  border: none !important;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: opacity 0.18s, transform 0.12s;
+}
+
+.btn-primary:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.55 !important;
+  transform: none;
+}
+
+.btn-outline-secondary {
+  border-color: var(--ps-border) !important;
+  color: var(--ps-muted) !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: var(--ps-surface) !important;
+  border-color: var(--ps-muted) !important;
+  color: var(--ps-text) !important;
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #1a7ed4 0%, var(--ps-accent) 100%) !important;
+  border: none !important;
+  font-weight: 600;
+  transition: opacity 0.18s, transform 0.12s;
+}
+
+.btn-success:hover {
+  opacity: 0.88;
+  transform: translateY(-1px);
+}
+
+/* ── Progress bar ──────────────────────────────────────────────────────────── */
+
+.progress {
+  background-color: var(--ps-border) !important;
+  border-radius: 8px !important;
+}
+
+.progress-bar {
+  background: linear-gradient(90deg, #1a7ed4 0%, var(--ps-accent) 100%) !important;
+}
+
+/* ── Alerts ────────────────────────────────────────────────────────────────── */
+
+.alert-danger {
+  background-color: rgba(248, 81, 73, 0.12) !important;
+  border-color: rgba(248, 81, 73, 0.4) !important;
+  color: #ff7b72 !important;
+}
+
+.alert-danger .btn-close {
+  filter: invert(1);
+}
+
+/* ── Text helpers ──────────────────────────────────────────────────────────── */
+
+.text-muted {
+  color: var(--ps-muted) !important;
+}
+
+.text-accent {
+  color: var(--ps-accent);
+}
+
+/* ── Hero tagline ──────────────────────────────────────────────────────────── */
+
+.ps-hero-title {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--ps-text) 0%, var(--ps-accent) 80%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1.2;
+}
+
+.ps-tagline {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.82rem;
+  color: var(--ps-muted);
+  letter-spacing: 0.03em;
+  min-height: 1.3em;
+}
+
+.ps-tagline::before {
+  content: "// ";
+  color: var(--ps-accent2);
+}
+
+/* ── Section labels ────────────────────────────────────────────────────────── */
+
+.ps-section-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ps-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* ── Footer ────────────────────────────────────────────────────────────────── */
+
+footer {
+  border-color: var(--ps-border) !important;
+  color: var(--ps-muted) !important;
+}
+
+footer a {
+  color: var(--ps-accent) !important;
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+/* ── Job status page ───────────────────────────────────────────────────────── */
+
+.ps-job-id {
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.78rem;
+  color: var(--ps-muted);
+  background: var(--ps-surface);
+  padding: 2px 8px;
+  border: 1px solid var(--ps-border);
+  border-radius: 6px;
+}
+
+/* ── Monospace helpers ─────────────────────────────────────────────────────── */
+
+.font-mono {
+  font-family: "SF Mono", Consolas, monospace;
+}
+
+/* ── GitHub Pages fields panel ────────────────────────────────────────────── */
+
+.ps-github-fields {
+  background: rgba(88, 166, 255, 0.05);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.ps-github-fields code {
+  font-size: 0.78rem;
+  background: var(--ps-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--ps-accent2);
+}
+
+/* ── Job history sidebar ───────────────────────────────────────────────────── */
+
+.ps-sidebar-heading {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--ps-muted);
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--ps-border);
+  margin-bottom: 0.75rem;
+}
+
+.ps-job-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.ps-job-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--ps-bg);
+  border: 1px solid var(--ps-border);
+  border-radius: 8px;
+  text-decoration: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.ps-job-item:hover {
+  border-color: var(--ps-accent);
+  background: rgba(88, 166, 255, 0.05);
+}
+
+.ps-job-title {
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: var(--ps-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ps-job-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--ps-muted);
+  font-family: "SF Mono", Consolas, monospace;
+}
+
+/* ── Generation parameter pills ───────────────────────────────────────────── */
+.ps-job-params {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 5px;
+}
+
+.ps-param-pill {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-family: "SF Mono", Consolas, monospace;
+  background: rgba(88, 166, 255, 0.08);
+  color: var(--ps-accent);
+  border: 1px solid rgba(88, 166, 255, 0.2);
+  white-space: nowrap;
+}
+
+.ps-param-pill-gh {
+  background: rgba(88, 166, 255, 0.15);
+  border-color: rgba(88, 166, 255, 0.4);
+}
+
+/* ── Status badges ─────────────────────────────────────────────────────────── */
+
+.ps-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ps-badge-queued {
+  background: rgba(139, 148, 158, 0.15);
+  color: var(--ps-muted);
+  border: 1px solid rgba(139, 148, 158, 0.3);
+}
+
+.ps-badge-running {
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--ps-accent);
+  border: 1px solid rgba(88, 166, 255, 0.3);
+}
+
+.ps-badge-running::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ps-accent);
+  animation: ps-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes ps-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+.ps-badge-completed {
+  background: rgba(88, 166, 255, 0.12);
+  color: var(--ps-accent);
+  border: 1px solid rgba(88, 166, 255, 0.35);
+}
+
+.ps-badge-failed {
+  background: rgba(248, 81, 73, 0.12);
+  color: #ff7b72;
+  border: 1px solid rgba(248, 81, 73, 0.3);
+}
+
+/* ── Copy URL button ───────────────────────────────────────────────────────── */
+
+.ps-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  background: var(--ps-bg);
+  border: 1px solid var(--ps-border);
+  border-radius: 6px;
+  color: var(--ps-muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ps-copy-btn:hover {
+  border-color: var(--ps-accent);
+  color: var(--ps-accent);
+}
+
+.ps-copy-btn.copied {
+  border-color: var(--ps-accent);
+  color: var(--ps-accent);
+}
+
+/* ── Scrollbar ─────────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--ps-bg); }
+::-webkit-scrollbar-thumb { background: var(--ps-border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ps-muted); }

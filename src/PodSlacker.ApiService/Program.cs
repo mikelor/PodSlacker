@@ -101,7 +101,7 @@ api.MapPost("/jobs", (CreateJobRequest request,
     if (string.IsNullOrWhiteSpace(request.VideoUrl))
         return Results.BadRequest(new { error = "VideoUrl is required." });
 
-    var job = store.Create(request.VideoUrl);
+    var job = store.Create(request.VideoUrl, request.Config);
 
     runner.StartBackground(job, request.VideoUrl, request.Config);
 
@@ -114,6 +114,20 @@ api.MapPost("/jobs", (CreateJobRequest request,
 .WithSummary("Submit a new PodSlacker job")
 .Produces<JobStatusResponse>(StatusCodes.Status202Accepted)
 .Produces(StatusCodes.Status400BadRequest);
+
+// GET /api/jobs — list all in-memory jobs, newest first
+api.MapGet("/jobs", (JobStore store, HttpContext ctx) =>
+{
+    string baseUrl = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
+    var jobs = store.All()
+        .OrderByDescending(j => j.CreatedAt)
+        .Select(j => ToStatusResponse(j, baseUrl))
+        .ToList();
+    return Results.Ok(jobs);
+})
+.WithName("ListJobs")
+.WithSummary("List all in-memory jobs")
+.Produces<List<JobStatusResponse>>();
 
 // GET /api/jobs/{id} — poll job status
 api.MapGet("/jobs/{id}", (string id, JobStore store, HttpContext ctx) =>
@@ -147,10 +161,21 @@ api.MapGet("/jobs/{id}/page", (string id, JobStore store) =>
                 statusCode: StatusCodes.Status202Accepted);
     }
 
+    // Build a safe filename from the video title + job id.
+    // Sanitise: replace non-alphanumeric chars with underscores, collapse runs, trim.
+    string safeTitle = string.IsNullOrWhiteSpace(job.Title)
+        ? "slackcast"
+        : System.Text.RegularExpressions.Regex
+            .Replace(job.Title, @"[^\w]+", "_")
+            .Trim('_')
+            .ToLowerInvariant();
+    if (safeTitle.Length > 60) safeTitle = safeTitle[..60].TrimEnd('_');
+    string downloadName = $"{safeTitle}_{job.Id[..8]}.html";
+
     return Results.File(
         job.HtmlBytes,
-        contentType:    "text/html; charset=utf-8",
-        fileDownloadName: $"podslacker_{job.Id}.html");
+        contentType:      "text/html; charset=utf-8",
+        fileDownloadName: downloadName);
 })
 .WithName("DownloadPage")
 .WithSummary("Download the generated HTML page for a completed job")
@@ -165,13 +190,21 @@ app.Run();
 
 static JobStatusResponse ToStatusResponse(JobRecord job, string baseUrl) => new()
 {
-    Id       = job.Id,
-    VideoUrl = job.VideoUrl,
-    Status   = job.Status,
-    Message  = job.Message,
-    Percent  = job.Percent,
-    Error    = job.Error,
-    PageUrl  = job.Status == JobStatus.Completed
+    Id             = job.Id,
+    VideoUrl       = job.VideoUrl,
+    Title          = job.Title,
+    Status         = job.Status,
+    Message        = job.Message,
+    Percent        = job.Percent,
+    Error          = job.Error,
+    PageUrl        = job.Status == JobStatus.Completed
         ? $"{baseUrl}/api/jobs/{job.Id}/page"
         : null,
+    GitHubPagesUrl = job.GitHubPagesUrl,
+    Hosts          = job.Hosts,
+    Host1Name      = job.Host1Name,
+    Host2Name      = job.Host2Name,
+    LlmModel       = job.LlmModel,
+    NumFrames      = job.NumFrames,
+    PublishGitHub  = job.PublishGitHub,
 };

@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using PodSlacker.ApiService.Models;
+using PodSlacker.Core.Models;
 
 namespace PodSlacker.ApiService.Services;
 
@@ -12,10 +13,21 @@ public sealed class JobStore
     private readonly ConcurrentDictionary<string, JobRecord> _jobs = new();
 
     /// <summary>Creates a new <see cref="JobRecord"/> and adds it to the store.</summary>
+    /// <param name="videoUrl">YouTube video URL for this job.</param>
+    /// <param name="config">Runtime configuration; used to capture user-selected generation parameters.</param>
     /// <returns>The newly created record.</returns>
-    public JobRecord Create(string videoUrl)
+    public JobRecord Create(string videoUrl, PodSlackerConfig config)
     {
-        var record = new JobRecord { VideoUrl = videoUrl };
+        var record = new JobRecord
+        {
+            VideoUrl      = videoUrl,
+            Hosts         = config.Hosts,
+            Host1Name     = string.IsNullOrWhiteSpace(config.Host1Name) ? "JORDAN" : config.Host1Name,
+            Host2Name     = string.IsNullOrWhiteSpace(config.Host2Name) ? "MIKE"   : config.Host2Name,
+            LlmModel      = config.LlmModel ?? string.Empty,
+            NumFrames     = config.NumFrames,
+            PublishGitHub = config.PublishGithub,
+        };
         _jobs[record.Id] = record;
         return record;
     }

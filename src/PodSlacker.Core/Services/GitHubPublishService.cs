@@ -24,21 +24,31 @@ public sealed class GitHubPublishService(ILogger<GitHubPublishService> logger)
     /// with <c>repo</c> and <c>pages</c> scopes.
     /// </param>
     /// <param name="branch">Git branch to use as the GitHub Pages source.</param>
+    /// <param name="tokenValue">
+    /// Literal Personal Access Token supplied by the caller (e.g. from the web UI form).
+    /// When non-empty this takes precedence over <paramref name="tokenEnvVar"/>.
+    /// </param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>The public GitHub Pages URL where the page will be accessible.</returns>
     public async Task<string> PublishAsync(
-        string pagePath,
-        string repoName       = "podslacker-pages",
-        string tokenEnvVar    = "GITHUB_TOKEN",
-        string branch         = "gh-pages",
-        CancellationToken ct  = default)
+        string  pagePath,
+        string  repoName       = "podslacker-pages",
+        string  tokenEnvVar    = "GITHUB_TOKEN",
+        string  branch         = "gh-pages",
+        string? tokenValue     = null,
+        CancellationToken ct   = default)
     {
-        string? token = Environment.GetEnvironmentVariable(tokenEnvVar);
+        // Prefer a literal token passed by the caller (e.g. from the web UI form)
+        // over the server-side environment variable.
+        string? token = tokenValue is { Length: > 0 }
+            ? tokenValue
+            : Environment.GetEnvironmentVariable(tokenEnvVar);
+
         if (string.IsNullOrEmpty(token))
             throw new InvalidOperationException(
-                $"GitHub token not found. Set '{tokenEnvVar}' to a Personal Access Token " +
-                "with 'repo' and 'pages' scopes. " +
-                "Create one at: https://github.com/settings/tokens");
+                $"GitHub token not found. Either supply a Personal Access Token in the " +
+                $"publish form or set '{tokenEnvVar}' on the server. " +
+                "Create a token at: https://github.com/settings/tokens");
 
         var github   = new GitHubClient(new ProductHeaderValue("PodSlacker"));
         github.Credentials = new Credentials(token);

@@ -97,18 +97,18 @@ public sealed record PodSlackerConfig
     public string  TtsApiKeyEnv  { get; init; } = "OPENAI_API_KEY";
     /// <summary>
     /// Voice name for the first host, interpreted by whichever TTS engine is active.
-    /// Kokoro examples: <c>am_michael</c>, <c>bm_george</c>.
-    /// OpenAI examples: <c>onyx</c>, <c>echo</c>, <c>alloy</c>.
-    /// Defaults to <c>am_michael</c> (Kokoro) since Kokoro is the default engine.
-    /// </summary>
-    public string  VoiceHost1    { get; init; } = "am_michael";
-    /// <summary>
-    /// Voice name for the second host, interpreted by whichever TTS engine is active.
     /// Kokoro examples: <c>af_heart</c>, <c>bf_emma</c>.
     /// OpenAI examples: <c>nova</c>, <c>shimmer</c>, <c>fable</c>.
     /// Defaults to <c>af_heart</c> (Kokoro) since Kokoro is the default engine.
     /// </summary>
-    public string  VoiceHost2    { get; init; } = "af_heart";
+    public string  VoiceHost1    { get; init; } = "af_heart";
+    /// <summary>
+    /// Voice name for the second host, interpreted by whichever TTS engine is active.
+    /// Kokoro examples: <c>am_michael</c>, <c>bm_george</c>.
+    /// OpenAI examples: <c>onyx</c>, <c>echo</c>, <c>alloy</c>.
+    /// Defaults to <c>am_michael</c> (Kokoro) since Kokoro is the default engine.
+    /// </summary>
+    public string  VoiceHost2    { get; init; } = "am_michael";
 
     // ── Prompt overrides ─────────────────────────────────────────────────────
 
@@ -124,11 +124,17 @@ public sealed record PodSlackerConfig
     // ── GitHub Pages publishing ───────────────────────────────────────────────
 
     /// <summary>When <see langword="true"/>, publishes the generated HTML page to GitHub Pages after the run completes.</summary>
-    public bool    PublishGithub  { get; init; } = false;
+    public bool    PublishGithub    { get; init; } = false;
     /// <summary>Name of the GitHub repository to publish to (e.g. <c>podslacker-pages</c>). Created automatically if it does not exist.</summary>
-    public string  GithubRepo     { get; init; } = "podslacker-pages";
+    public string  GithubRepo       { get; init; } = "podslacker-pages";
     /// <summary>Name of the environment variable that holds a GitHub Personal Access Token with <c>repo</c> and <c>pages</c> scopes.</summary>
-    public string  GithubTokenEnv { get; init; } = "GITHUB_TOKEN";
+    public string  GithubTokenEnv   { get; init; } = "GITHUB_TOKEN";
+    /// <summary>
+    /// Optional literal GitHub Personal Access Token. When non-null this takes precedence over
+    /// <see cref="GithubTokenEnv"/>, so callers (e.g. the web UI) can supply a token directly
+    /// without requiring it to be set as a server-side environment variable.
+    /// </summary>
+    public string? GithubTokenValue { get; init; }
     /// <summary>Git branch used as the GitHub Pages source (e.g. <c>gh-pages</c>). Created automatically if it does not exist.</summary>
-    public string  GithubBranch   { get; init; } = "gh-pages";
+    public string  GithubBranch     { get; init; } = "gh-pages";
 }

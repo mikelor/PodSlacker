@@ -13,7 +13,9 @@ public sealed record CapturedFrame(string FilePath, double TimestampSeconds);
 public sealed record PipelineProgress(
     PipelineStep Step,
     string        Message,
-    int           PercentComplete = 0
+    int           PercentComplete = 0,
+    // Set on the FetchingTitle event once the title is known; null for all other steps.
+    string?       Title           = null
 );
 
 /// <summary>Identifies the current step of a pipeline run for progress reporting.</summary>

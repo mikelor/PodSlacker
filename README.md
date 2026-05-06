@@ -22,6 +22,17 @@ Built on **.NET 10 / C# 14** with no Python, no ffmpeg, and no yt-dlp required. 
 - **GitHub Pages publishing.** One flag uploads the page and enables Pages automatically.
 - **Prompt-driven.** All LLM instructions live in plain-text files you can edit freely, with a three-tier fallback so the tool always works out of the box.
 
+### Web UI features
+
+- **Job history sidebar.** The home page shows all in-memory jobs in a live-polling sidebar — titles, status badges, progress, and direct links. Refreshes every 5 seconds automatically.
+- **LLM model selector.** Choose from a curated list of free OpenRouter models (Llama 3.3 70B, Gemini 2.0 Flash, DeepSeek R1, Mistral, Qwen, Phi-4, and more) directly in the submit form.
+- **Dialogue / Monologue toggle.** Switch between a two-host conversation and a solo narration before submitting.
+- **Snapshot count slider.** Control how many key-moment screenshots are captured (0–12) from the submit form.
+- **Smart download filenames.** Completed SlackCasts download as `video_title_<jobid>.html` rather than a bare UUID.
+- **Live video title.** The video title appears on the job status page as soon as the pipeline fetches it — before any LLM steps begin.
+- **Copy job URL.** One-click copy button on the job status page puts the full URL on your clipboard with a "✓ Copied!" flash.
+- **PodSlacker CTA banner.** Every generated HTML page includes a branded "Try PodSlacker now" banner at the top, linking to `https://podslacker.com`.
+
 ---
 
 ## Solution Structure
@@ -125,6 +136,7 @@ Start the API service first, then point the CLI or web UI at it.
 # Terminal 1 — start the API
 export OPENROUTER_API_KEY=sk-or-...
 export PODSLACKER_API_KEY=my-secret   # optional — enables X-Api-Key auth
+# export YOUTUBE_API_KEY=AIza...      # optional — only needed if the default key stops working
 dotnet run --project src/PodSlacker.ApiService
 
 # Terminal 2 — use the CLI in remote mode
@@ -143,6 +155,7 @@ dotnet run --project src/PodSlacker.Web
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/jobs` | Submit a new job; returns `202 Accepted` with a job ID |
+| `GET` | `/api/jobs` | List all in-memory jobs, newest first |
 | `GET` | `/api/jobs/{id}` | Poll job status (Queued / Running / Completed / Failed) |
 | `GET` | `/api/jobs/{id}/page` | Download the generated HTML page once completed |
 | `GET` | `/health` | Health check (no auth required) |
@@ -159,7 +172,13 @@ Set `PODSLACKER_API_KEY` on the API service to require an `X-Api-Key` header on 
   "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
   "config": {
     "hosts": 2,
-    "tts_engine": "kokoro"
+    "num_frames": 6,
+    "llm_model": "meta-llama/llama-3.3-70b-instruct:free",
+    "llm_base_url": "https://openrouter.ai/api/v1",
+    "tts_engine": "kokoro",
+    "publish_github": true,
+    "github_repo": "podslacker-pages",
+    "github_token_value": "ghp_..."
   }
 }
 ```
@@ -172,15 +191,85 @@ All `config` fields are optional — omitted fields use the server's compiled de
 {
   "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "video_url": "https://...",
-  "status": "Running",
-  "message": "Generating podcast script…",
-  "percent": 42,
+  "title": "Never Gonna Give You Up",
+  "status": "Completed",
+  "message": "Done!",
+  "percent": 100,
   "error": null,
-  "page_url": null
+  "page_url": "http://localhost:5100/api/jobs/3fa85f64-.../page",
+  "git_hub_pages_url": "https://username.github.io/podslacker-pages/never_gonna_give_you_up_dQw4w9WgXcQ_page.html"
 }
 ```
 
-`status` is one of `Queued`, `Running`, `Completed`, `Failed`. `page_url` is populated (pointing at `/api/jobs/{id}/page`) only when status is `Completed`.
+`status` is one of `Queued`, `Running`, `Completed`, `Failed`. `title` is populated as soon as the pipeline fetches it from YouTube (typically within the first few seconds). `page_url` is populated (pointing at `/api/jobs/{id}/page`) only when status is `Completed`. `git_hub_pages_url` is populated only when `publish_github` was `true` and publishing succeeded.
+
+The download filename for `/api/jobs/{id}/page` is derived from the video title — e.g. `never_gonna_give_you_up_3fa85f64.html` — rather than a bare UUID.
+
+---
+
+## Web UI Walkthrough
+
+Once the Aspire host or Docker Compose stack is running, open the web UI (default `http://localhost:5200`) in any browser.
+
+### Submit form
+
+The home page is split into two columns: the submit form on the left and a live job history sidebar on the right.
+
+**YouTube URL** — paste any YouTube link and press Enter or click **🎙️ Generate Podcast**.
+
+**Format** — choose between *🎭 Dialogue* (Alex & Jordan, two voices) or *🎤 Monologue* (Alex solo). Maps to `hosts: 2` and `hosts: 1` in the config.
+
+**AI Model** — select the LLM used for summarisation and script generation. All options are free via OpenRouter:
+
+| Model | Notes |
+|---|---|
+| Llama 3.3 70B | Recommended — best balance of quality and speed |
+| Gemini 2.0 Flash | Very fast; good for shorter videos |
+| DeepSeek R1 | Strong reasoning; slower |
+| Mistral Small 3.1 24B | Compact and fast |
+| Qwen 3 235B | Largest model; highest quality, slowest |
+| Phi-4 14B | Lightweight; good for quick tests |
+| OpenRouter Auto | Routes to the best available free model automatically |
+
+**Key-Moment Snapshots** — drag the slider from 0 (none) to 12 to control how many screenshots are captured from the video.
+
+### Job history sidebar
+
+The sidebar polls `GET /api/jobs` every 5 seconds and shows all in-memory jobs with animated status badges. Click any row to jump to that job's status page. Jobs are held in memory only — they reset when the API service restarts.
+
+### Publishing to GitHub Pages
+
+Check **Publish to GitHub Pages** in the submit form to automatically push the finished SlackCast to a public GitHub Pages site when the pipeline completes.
+
+**Repository name** — defaults to `podslacker-pages`. The repository is created automatically if it doesn't exist.
+
+**Personal Access Token** — paste a GitHub PAT with `repo` and `pages` scopes directly into the form. This overrides any `GITHUB_TOKEN` set on the server, so you can publish to different accounts without restarting the service. Leave the field blank to use the server's `GITHUB_TOKEN` environment variable instead. [Create a token ↗](https://github.com/settings/tokens)
+
+When the job completes, the status page shows both a **⬇️ Download Your SlackCast** button and a **🌐 View on GitHub Pages** link. Published jobs also show a 🌐 icon in the home page sidebar.
+
+#### Setting up your GitHub Pages repository
+
+PodSlacker creates the repository and `gh-pages` branch automatically on first publish, but GitHub requires Pages to be enabled manually once before the site goes live.
+
+1. After your first publish, go to `https://github.com/<your-username>/podslacker-pages/settings/pages`
+2. Under **Build and deployment → Source**, select **Deploy from a branch**
+3. Set the branch to `gh-pages` and the folder to `/ (root)`, then click **Save**
+
+Your SlackCasts will then be publicly accessible at:
+
+```
+https://<your-username>.github.io/podslacker-pages/<video-title>_page.html
+```
+
+Each subsequent publish pushes a new file to the same branch — existing pages are never overwritten. For full GitHub Pages documentation see [docs.github.com/pages](https://docs.github.com/en/pages).
+
+### Job status page
+
+While the pipeline runs, the status page shows the video title (populated within seconds of job creation), a progress bar, and the current pipeline step. When the job completes, click **⬇️ Download Your SlackCast** to save the self-contained HTML page. Use the **⎘ Copy URL** button to copy a shareable link to the job.
+
+### Generated SlackCast page
+
+The downloaded HTML file is fully self-contained (audio and images are base64-embedded). It opens in any browser with no internet required. Every page includes a branded **Try PodSlacker now ↗** banner at the top.
 
 ---
 
@@ -224,6 +313,8 @@ docker build -f PodSlacker.Web/Dockerfile -t podslacker-web .
 | `OPENAI_API_KEY` | API | Required only when using OpenAI TTS |
 | `PODSLACKER_API_KEY` | API + Web | Enables `X-Api-Key` auth on the API; must match in both containers |
 | `PODSLACKER_SERVICE_URL` | Web | Set automatically by Docker Compose to `http://podslacker-api:8080` |
+| `YOUTUBE_API_KEY` | API | YouTube internal WEB client key used by transcript fallback Tier 3. A safe public default is compiled in; only set this if the default stops working. |
+| `GITHUB_TOKEN` | API | GitHub Personal Access Token with `repo` + `pages` scopes. Used as a server-wide fallback when "Publish to GitHub Pages" is enabled but no token is entered in the web form. [Create one ↗](https://github.com/settings/tokens) |
 | `ASPNETCORE_ENVIRONMENT` | Both | Defaults to `Development`; set to `Production` for hardened deployments |
 
 ### OpenCV cross-platform support

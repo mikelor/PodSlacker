@@ -83,6 +83,13 @@ public sealed class PodSlackerPipeline(
             ? $"{VideoMetadataService.SanitizeTitle(title)}_{videoId}"
             : videoId;
 
+        // Report the resolved title so callers (e.g. PipelineRunner) can surface it early.
+        progress?.Report(new PipelineProgress(
+            PipelineStep.FetchingTitle,
+            title is not null ? $"Title: {title}" : "Title not found",
+            5,
+            title ?? videoId));
+
         logger.LogInformation("Title: {Title}", title ?? "(not found)");
         logger.LogInformation("Base name: {BaseName}", baseName);
 
@@ -220,7 +227,8 @@ public sealed class PodSlackerPipeline(
         {
             Report(PipelineStep.Publishing, "Publishing to GitHub Pages…", 95);
             ghPagesUrl = await githubService.PublishAsync(
-                htmlPath, config.GithubRepo, config.GithubTokenEnv, config.GithubBranch, ct);
+                htmlPath, config.GithubRepo, config.GithubTokenEnv,
+                config.GithubBranch, config.GithubTokenValue, ct);
             logger.LogInformation("Published to: {Url}", ghPagesUrl);
         }
 

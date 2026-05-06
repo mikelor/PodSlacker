@@ -16,6 +16,13 @@ services:
       # LLM provider keys — set these in a .env file next to docker-compose.yml.
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Optional: override the YouTube internal WEB client key used by transcript
+      # fallback Tier 3.  A safe public default is compiled in; set this only if
+      # YouTube rotates the key and the default stops working.
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY:-}
+      # Optional: GitHub Personal Access Token (repo + pages scopes).  Used when
+      # "Publish to GitHub Pages" is enabled and no token is entered in the web form.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     volumes:
       # Persist the Kokoro ONNX model (~320 MB) across container restarts so it
       # only needs to be downloaded once.
