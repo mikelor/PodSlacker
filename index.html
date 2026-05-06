@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PodSlacker — Not every hour-long video deserves an hour.</title>
-  <meta name="description" content="Point PodSlacker at any YouTube video and get a summary, a listenable podcast, key moment screenshots, and a full transcript — without sitting through the whole thing first." />
+  <meta name="description" content="PodSlacker turns any YouTube video into a SlackCast — a summary, a listenable podcast, key moment screenshots, and a full transcript. AI does the watching. You do the listening." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -27,69 +27,103 @@
       min-height: 100vh;
     }
 
-    /* ── HERO ── */
+    /* ── HERO ──────────────────────────────────────────────────────────────── */
     .hero {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: 100px 24px 80px;
-      background: radial-gradient(ellipse 80% 60% at 50% 0%, #2d235a 0%, transparent 70%);
+      background: radial-gradient(ellipse 90% 70% at 50% 0%, #2d235a 0%, transparent 70%);
       border-bottom: 1px solid var(--border);
+      padding: 72px 24px 80px;
     }
 
-    .wordmark {
-      font-size: 3rem;
+    .hero-inner {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 64px;
+      align-items: center;
+    }
+
+    /* ── Hero left: logo + copy + CTA ─────────────────────────────────────── */
+    .hero-left {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+    }
+
+    .hero-logo {
+      width: 96px;
+      height: 96px;
+      object-fit: contain;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      filter: drop-shadow(0 0 24px rgba(108, 99, 255, 0.4));
+    }
+
+    .hero-headline {
+      font-size: clamp(2rem, 4vw, 2.75rem);
       font-weight: 800;
       letter-spacing: -0.03em;
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+
+    .hero-headline em {
+      font-style: normal;
       background: linear-gradient(135deg, #fff 30%, var(--accent2));
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 16px;
     }
 
-    .tagline {
-      font-size: 1.25rem;
-      color: var(--muted);
-      font-style: italic;
-      margin-bottom: 32px;
+    .hero-sub {
+      font-size: 1rem;
+      color: #8b92a8;
+      margin-bottom: 28px;
     }
 
-    .hero-body {
-      max-width: 660px;
-      font-size: 1.1rem;
-      color: #bcc0d0;
-      margin-bottom: 20px;
-    }
-
-    .hero-body + .hero-body {
-      margin-top: 16px;
-    }
-
-    .cta-row {
-      margin-top: 48px;
+    /* ── Taglines ─────────────────────────────────────────────────────────── */
+    .taglines {
       display: flex;
-      gap: 16px;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 36px;
+      padding-left: 14px;
+      border-left: 2px solid rgba(167, 139, 250, 0.35);
+    }
+
+    .taglines span {
+      font-size: 0.95rem;
+      color: var(--accent2);
+      font-style: italic;
+      opacity: 0.9;
+    }
+
+    /* ── CTA row ──────────────────────────────────────────────────────────── */
+    .cta-row {
+      display: flex;
+      gap: 12px;
       flex-wrap: wrap;
-      justify-content: center;
+      align-items: center;
     }
 
     .btn {
       display: inline-block;
-      padding: 14px 32px;
+      padding: 13px 28px;
       border-radius: 8px;
-      font-size: 1rem;
+      font-size: 0.975rem;
       font-weight: 600;
       text-decoration: none;
       transition: opacity .15s, transform .1s;
       cursor: pointer;
+      white-space: nowrap;
     }
     .btn:hover { opacity: .88; transform: translateY(-1px); }
 
     .btn-primary {
       background: var(--accent);
       color: #fff;
+      box-shadow: 0 4px 20px rgba(108, 99, 255, 0.35);
     }
     .btn-ghost {
       background: transparent;
@@ -97,9 +131,119 @@
       color: var(--muted);
     }
 
-    /* ── SECTIONS ── */
+    /* ── Hero right: featured SlackCast widget ────────────────────────────── */
+    .hero-right {
+      position: relative;
+    }
+
+    .sc-widget {
+      display: block;
+      text-decoration: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      transition: border-color .2s, transform .2s, box-shadow .2s;
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+    }
+
+    .sc-widget:hover {
+      border-color: var(--accent);
+      transform: translateY(-3px);
+      box-shadow: 0 16px 48px rgba(108, 99, 255, 0.2);
+    }
+
+    .sc-widget-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent2);
+      padding: 12px 16px 8px;
+      opacity: 0.8;
+    }
+
+    .sc-thumb-wrap {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+    }
+
+    .sc-thumb {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .3s;
+    }
+
+    .sc-widget:hover .sc-thumb {
+      transform: scale(1.03);
+    }
+
+    .sc-thumb-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(13, 15, 20, 0.85) 0%, transparent 50%);
+    }
+
+    .sc-play-badge {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(108, 99, 255, 0.85);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.04em;
+      backdrop-filter: blur(4px);
+    }
+
+    .sc-body {
+      padding: 14px 16px 16px;
+    }
+
+    .sc-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .sc-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .sc-pill {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 0.7rem;
+      font-family: "SF Mono", Consolas, monospace;
+      background: rgba(108, 99, 255, 0.1);
+      color: var(--accent2);
+      border: 1px solid rgba(108, 99, 255, 0.25);
+      white-space: nowrap;
+    }
+
+    .sc-view-link {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent2);
+      opacity: 0.8;
+    }
+
+    /* ── SECTIONS ─────────────────────────────────────────────────────────── */
     section {
-      max-width: 820px;
+      max-width: 860px;
       margin: 0 auto;
       padding: 80px 24px;
     }
@@ -115,7 +259,58 @@
       margin-bottom: 40px;
     }
 
-    /* ── FEATURE CARDS ── */
+    /* ── SLACKCAST INTRO SECTION ──────────────────────────────────────────── */
+    .slackcast-intro {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: start;
+    }
+
+    .slackcast-intro-text {
+      font-size: 1.05rem;
+      color: #bcc0d0;
+      line-height: 1.8;
+    }
+
+    .slackcast-intro-text p + p { margin-top: 16px; }
+
+    .slackcast-definition {
+      background: var(--card-bg);
+      border: 1px solid rgba(108, 99, 255, 0.3);
+      border-radius: 12px;
+      padding: 24px 28px;
+    }
+
+    .slackcast-definition .def-word {
+      font-size: 1.4rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--accent2);
+      margin-bottom: 4px;
+    }
+
+    .slackcast-definition .def-pos {
+      font-size: 0.78rem;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .slackcast-definition .def-text {
+      font-size: 0.95rem;
+      color: #bcc0d0;
+      line-height: 1.75;
+      font-style: italic;
+    }
+
+    .slackcast-definition .def-text strong {
+      font-style: normal;
+      color: var(--text);
+    }
+
+    /* ── FEATURE CARDS ────────────────────────────────────────────────────── */
     .features {
       display: grid;
       gap: 20px;
@@ -141,7 +336,7 @@
       line-height: 1.75;
     }
 
-    /* ── FLEXIBILITY SECTION ── */
+    /* ── FLEXIBILITY SECTION ──────────────────────────────────────────────── */
     .flex-body {
       font-size: 1.05rem;
       color: #bcc0d0;
@@ -149,11 +344,9 @@
       max-width: 680px;
     }
 
-    .flex-body p + p {
-      margin-top: 20px;
-    }
+    .flex-body p + p { margin-top: 20px; }
 
-    /* ── PITCH / CLOSER ── */
+    /* ── PITCH / CLOSER ───────────────────────────────────────────────────── */
     .pitch-body {
       font-size: 1.1rem;
       color: #bcc0d0;
@@ -161,9 +354,7 @@
       line-height: 1.8;
     }
 
-    .pitch-body p + p {
-      margin-top: 20px;
-    }
+    .pitch-body p + p { margin-top: 20px; }
 
     .kicker {
       margin-top: 40px;
@@ -173,10 +364,10 @@
       font-style: italic;
     }
 
-    /* ── EXAMPLES ── */
+    /* ── FEATURED SLACKCASTS GRID ─────────────────────────────────────────── */
     .example-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
       gap: 24px;
     }
 
@@ -191,9 +382,7 @@
       transition: border-color .2s;
     }
 
-    .example-card:hover {
-      border-color: var(--accent);
-    }
+    .example-card:hover { border-color: var(--accent); }
 
     .example-label {
       font-size: 0.75rem;
@@ -204,7 +393,7 @@
     }
 
     .example-title {
-      font-size: 1.1rem;
+      font-size: 1.05rem;
       font-weight: 700;
       color: var(--text);
       line-height: 1.4;
@@ -215,6 +404,25 @@
       color: #bcc0d0;
       line-height: 1.75;
       flex: 1;
+    }
+
+    .example-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 2px;
+    }
+
+    .example-pill {
+      display: inline-block;
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 0.68rem;
+      font-family: "SF Mono", Consolas, monospace;
+      background: rgba(108, 99, 255, 0.08);
+      color: var(--accent2);
+      border: 1px solid rgba(108, 99, 255, 0.2);
+      white-space: nowrap;
     }
 
     .example-link {
@@ -229,7 +437,7 @@
 
     .example-link:hover { color: #fff; }
 
-    /* ── FOOTER ── */
+    /* ── FOOTER ───────────────────────────────────────────────────────────── */
     footer {
       border-top: 1px solid var(--border);
       text-align: center;
@@ -237,38 +445,125 @@
       color: var(--muted);
       font-size: 0.875rem;
     }
+
+    footer a { color: var(--accent2); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    /* ── RESPONSIVE ───────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero-inner {
+        grid-template-columns: 1fr;
+        gap: 48px;
+      }
+
+      .hero-left { align-items: center; text-align: center; }
+
+      .taglines { align-items: center; border-left: none; padding-left: 0; border-top: 2px solid rgba(167, 139, 250, 0.35); padding-top: 12px; }
+
+      .slackcast-intro { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
 
-  <!-- HERO -->
+  <!-- ── HERO ──────────────────────────────────────────────────────────────── -->
   <header class="hero">
-    <div class="wordmark">PodSlacker</div>
-    <div class="tagline">Not every hour-long video deserves an hour.</div>
+    <div class="hero-inner">
 
-    <p class="hero-body">
-      There's more worthwhile content on YouTube than any person could reasonably watch.
-      Tutorials, conference talks, interviews, deep dives, documentary essays — it keeps coming,
-      and the watch list keeps growing. The problem isn't finding content. It's figuring out
-      <em>which</em> content is actually worth your time before you've committed forty-five minutes to find out.
-    </p>
+      <!-- Left: logo, headline, taglines, CTA -->
+      <div class="hero-left">
+        <img src="src/PodSlacker.Web/wwwroot/images/PodSlackerLogo.png" alt="PodSlacker" class="hero-logo" />
 
-    <p class="hero-body">
-      PodSlacker is for people who take their content seriously but their time even more so.
-      Point it at any YouTube video and it does the legwork: a written summary, a listenable
-      podcast you can take with you, visual snapshots of the key moments, and a full transcript
-      when you want to go deeper. Everything you need to make a smart call — watch, skip, or
-      save for later — without sitting through the whole thing first.
-    </p>
+        <h1 class="hero-headline">
+          Turn any YouTube video<br>into a <em>SlackCast</em>.
+        </h1>
+        <p class="hero-sub">AI-generated summaries, podcasts, screenshots &amp; transcripts — instantly.</p>
 
-    <p class="hero-body" style="color: var(--accent2); font-weight: 600;">
-      Then, only if it earns your full attention, you watch.
-    </p>
+        <div class="taglines">
+          <span>AI does the watching. You do the listening.</span>
+          <span>One URL. One podcast. Zero effort.</span>
+          <span>Your YouTube backlog, podcasted.</span>
+          <span>Slack off smarter — let AI listen for you.</span>
+        </div>
+
+        <div class="cta-row">
+          <a href="https://p9scjczk-5200.use.devtunnels.ms" class="btn btn-primary">
+            🎙️ Try PodSlacker Now &rarr;
+          </a>
+          <a href="#slackcasts" class="btn btn-ghost">See SlackCasts ↓</a>
+        </div>
+      </div>
+
+      <!-- Right: featured SlackCast widget -->
+      <div class="hero-right">
+        <a class="sc-widget"
+           href="outputs/rick_astley_never_gonna_give_you_up_official_video_dQw4w9WgXcQ_page.html"
+           target="_blank" rel="noopener">
+
+          <div class="sc-widget-label">✨ Featured SlackCast</div>
+
+          <div class="sc-thumb-wrap">
+            <img class="sc-thumb"
+                 src="outputs/rick_astley_never_gonna_give_you_up_official_video_dQw4w9WgXcQ_frame_01.jpg"
+                 alt="Rick Astley — Never Gonna Give You Up key moment" />
+            <div class="sc-thumb-overlay"></div>
+            <span class="sc-play-badge">▶ Open SlackCast</span>
+          </div>
+
+          <div class="sc-body">
+            <div class="sc-title">Rick Astley — Never Gonna Give You Up (Official Video)</div>
+            <div class="sc-pills">
+              <span class="sc-pill">🎭 JORDAN &amp; MIKE</span>
+              <span class="sc-pill">🤖 Llama 3.3</span>
+              <span class="sc-pill">📸 6 frames</span>
+            </div>
+            <div class="sc-view-link">View summary, podcast &amp; transcript &rarr;</div>
+          </div>
+        </a>
+      </div>
+
+    </div>
   </header>
 
-  <!-- WHAT YOU GET -->
+  <!-- ── WHAT IS A SLACKCAST ────────────────────────────────────────────────── -->
   <section>
-    <h2>What you get</h2>
+    <h2>What is a SlackCast?</h2>
+    <div class="slackcast-intro">
+
+      <div class="slackcast-intro-text">
+        <p>
+          A <strong>SlackCast</strong> is what PodSlacker creates when you point it at a YouTube video.
+          It's not a transcript dump or a bullet-point summary — it's a complete, self-contained
+          page that gives you everything you'd want to know about a video without watching it.
+        </p>
+        <p>
+          A written summary of the key ideas. A generated podcast episode — two hosts discussing
+          the content naturally, or a solo narrator walking you through it. Visual snapshots from
+          the most important moments. A full clickable transcript that jumps straight to any second
+          in the video. All packaged into one shareable page, ready in minutes.
+        </p>
+        <p>
+          Think of a SlackCast as the smart version of "I'll watch it later" — where later means
+          right now, in whatever format fits your next twenty minutes.
+        </p>
+      </div>
+
+      <div class="slackcast-definition">
+        <div class="def-word">SlackCast</div>
+        <div class="def-pos">noun &nbsp;/slæk·kɑːst/</div>
+        <p class="def-text">
+          A rich media digest of a YouTube video produced by <strong>PodSlacker</strong>,
+          comprising a written summary, a generated podcast episode, key-moment screenshots,
+          and a full timestamped transcript — delivered as a single shareable HTML page.
+        </p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── WHAT'S IN EVERY SLACKCAST ─────────────────────────────────────────── -->
+  <section>
+    <h2>What's in every SlackCast</h2>
     <div class="features">
 
       <div class="card">
@@ -280,10 +575,10 @@
 
       <div class="card">
         <div class="card-title">A podcast, ready when you are.</div>
-        <p>If the summary catches your interest but you're not in front of a screen, PodSlacker
-        generates a conversational audio version of the content. Two hosts discuss the material
-        naturally, or a single narrator walks you through it — your choice. Listen during your
-        commute, your workout, or while you're making dinner. The content comes with you.</p>
+        <p>PodSlacker generates a conversational audio version of the content. Two hosts discuss
+        the material naturally, or a single narrator walks you through it — your choice. Listen
+        during your commute, your workout, or while you're making dinner. The content comes with
+        you.</p>
       </div>
 
       <div class="card">
@@ -305,13 +600,13 @@
         <div class="card-title">One shareable page.</div>
         <p>Everything — summary, audio player, key moment images, and transcript — is packaged into
         a single self-contained page that opens in any browser. Share it with a colleague, save it
-        for reference, or publish it. No account required, no link that expires.</p>
+        for reference, or publish it to GitHub Pages. No account required, no link that expires.</p>
       </div>
 
     </div>
   </section>
 
-  <!-- WORKS THE WAY YOU WORK -->
+  <!-- ── WORKS THE WAY YOU WORK ─────────────────────────────────────────────── -->
   <section>
     <h2>Works the way you work</h2>
     <div class="flex-body">
@@ -319,13 +614,13 @@
       Some want a single focused narrator; others find a two-host conversation easier to stay with
       on a long commute. Some want a quick five-frame visual overview; others want more.</p>
 
-      <p>PodSlacker is built to accommodate that. The format, the voices, the depth of coverage,
-      the AI provider powering it — these are all adjustable. The outputs adapt to how you want
-      to use them.</p>
+      <p>PodSlacker is built to accommodate that. The hosts' names, the format, the depth of
+      coverage, the AI provider powering it — these are all adjustable. Your SlackCasts adapt
+      to how you want to use them.</p>
     </div>
   </section>
 
-  <!-- THE HONEST PITCH -->
+  <!-- ── THE HONEST PITCH ───────────────────────────────────────────────────── -->
   <section>
     <h2>The honest pitch</h2>
     <div class="pitch-body">
@@ -335,19 +630,41 @@
       <p>What it does is make the triage process dramatically faster — so the time you do invest
       goes toward content that actually deserves it. You stop watching things out of obligation
       or optimism. You start watching things because you already know they're worth it.</p>
+
+      <p>A SlackCast is your preview, your shortcut, and your safety net — all at once.</p>
     </div>
     <div class="kicker">Smart slacking isn't laziness. It's just knowing when you're done.</div>
   </section>
 
-  <!-- SEE IT IN ACTION -->
-  <section id="examples">
-    <h2>See it in action</h2>
+  <!-- ── FEATURED SLACKCASTS ────────────────────────────────────────────────── -->
+  <section id="slackcasts">
+    <h2>Featured SlackCasts</h2>
     <p style="color: var(--muted); margin-bottom: 36px; font-size: 1rem;">
-      Two real YouTube videos, run through PodSlacker. Each page has a summary, a generated
+      Real YouTube videos, turned into SlackCasts. Each page has a summary, a generated
       podcast, key moment screenshots, and a full clickable transcript — ready in minutes,
       no watching required.
     </p>
     <div class="example-grid">
+
+      <div class="example-card">
+        <div class="example-label">Music · Classic</div>
+        <div class="example-title">Rick Astley — Never Gonna Give You Up (4K Remaster)</div>
+        <p class="example-blurb">
+          Yes, even Rick Astley deserves a SlackCast. A deep dive into the 1987 synth-pop
+          anthem that became the internet's greatest prank — featuring soaring vocals, impeccable
+          choreography, and a bass line that absolutely slaps. You've been rickrolled. Now get
+          the podcast episode.
+        </p>
+        <div class="example-pills">
+          <span class="example-pill">🎭 JORDAN &amp; MIKE</span>
+          <span class="example-pill">🤖 Llama 3.3</span>
+          <span class="example-pill">📸 6 frames</span>
+        </div>
+        <a class="example-link"
+           href="outputs/rick_astley_never_gonna_give_you_up_official_video_dQw4w9WgXcQ_page.html">
+          View SlackCast &rarr;
+        </a>
+      </div>
 
       <div class="example-card">
         <div class="example-label">Google I/O · Developer talk</div>
@@ -359,8 +676,14 @@
           apps that adapt to the user's context and goals in real time rather than presenting
           a fixed layout everyone has to navigate the same way.
         </p>
-        <a class="example-link" href="outputs/personalize_the_user_experience_with_generative_ui_euBx8IvZTlA_page.html">
-          View PodSlacker page &rarr;
+        <div class="example-pills">
+          <span class="example-pill">🎤 Solo host</span>
+          <span class="example-pill">🤖 Auto</span>
+          <span class="example-pill">📸 6 frames</span>
+        </div>
+        <a class="example-link"
+           href="outputs/personalize_the_user_experience_with_generative_ui_euBx8IvZTlA_page.html">
+          View SlackCast &rarr;
         </a>
       </div>
 
@@ -372,10 +695,16 @@
           roadmap: Gemini 3.1's multimodal reasoning, open-source Gemma models, Gemini Live
           for expressive voice AI, the Lyria music-generation model, a Deep Research Agent,
           the Genie 3 interactive 3D world model, and Gemini Robotics. A lot of announcements
-          packed into one session — exactly the kind of video that benefits from a summary first.
+          packed into one session — exactly the kind of video that benefits from a SlackCast first.
         </p>
-        <a class="example-link" href="outputs/whats_new_with_gemini_from_google_deepmind_92LvgAcR6fI_page.html">
-          View PodSlacker page &rarr;
+        <div class="example-pills">
+          <span class="example-pill">🎤 Solo host</span>
+          <span class="example-pill">🤖 Auto</span>
+          <span class="example-pill">📸 6 frames</span>
+        </div>
+        <a class="example-link"
+           href="outputs/whats_new_with_gemini_from_google_deepmind_92LvgAcR6fI_page.html">
+          View SlackCast &rarr;
         </a>
       </div>
 
@@ -383,7 +712,10 @@
   </section>
 
   <footer>
-    &copy; 2025 PodSlacker
+    <p>
+      &copy; 2025 PodSlacker &nbsp;&middot;&nbsp;
+      <a href="https://p9scjczk-5200.use.devtunnels.ms">Try it now &rarr;</a>
+    </p>
   </footer>
 
 </body>
