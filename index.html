@@ -51,13 +51,31 @@
       gap: 0;
     }
 
+    .hero-brand {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
     .hero-logo {
       width: 96px;
       height: 96px;
       object-fit: contain;
       border-radius: 20px;
-      margin-bottom: 20px;
+      flex-shrink: 0;
       filter: drop-shadow(0 0 24px rgba(108, 99, 255, 0.4));
+    }
+
+    .hero-brand-name {
+      font-size: clamp(2rem, 4vw, 2.75rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1;
+      background: linear-gradient(135deg, #fff 30%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .hero-headline {
@@ -457,6 +475,7 @@
       }
 
       .hero-left { align-items: center; text-align: center; }
+      .hero-brand { justify-content: center; }
 
       .taglines { align-items: center; border-left: none; padding-left: 0; border-top: 2px solid rgba(167, 139, 250, 0.35); padding-top: 12px; }
 
@@ -472,7 +491,12 @@
 
       <!-- Left: logo, headline, taglines, CTA -->
       <div class="hero-left">
-        <img src="src/PodSlacker.Web/wwwroot/images/PodSlackerLogo.png" alt="PodSlacker" class="hero-logo" />
+
+        <!-- Brand row: logo + app name side-by-side -->
+        <div class="hero-brand">
+          <img src="src/PodSlacker.Web/wwwroot/images/PodSlackerLogo.png" alt="PodSlacker" class="hero-logo" />
+          <span class="hero-brand-name">PodSlacker.</span>
+        </div>
 
         <h1 class="hero-headline">
           Turn any YouTube video<br>into a <em>SlackCast</em>.

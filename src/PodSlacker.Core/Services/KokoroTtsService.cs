@@ -54,13 +54,14 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
     /// <param name="host2Name">Speaker label in <paramref name="segments"/> for host 2.</param>
     /// <param name="ct">Cancellation token.</param>
     public async Task GenerateAudioAsync(
-        List<DialogueSegment> segments,
-        string                outputPath,
-        string                voiceHost1 = "am_michael",
-        string                voiceHost2 = "af_heart",
-        string                host1Name  = "MIKE",
-        string                host2Name  = "JORDAN",
-        CancellationToken     ct         = default)
+        List<DialogueSegment>            segments,
+        string                           outputPath,
+        string                           voiceHost1       = "am_michael",
+        string                           voiceHost2       = "af_heart",
+        string                           host1Name        = "MIKE",
+        string                           host2Name        = "JORDAN",
+        IProgress<(int current, int total)>? segmentProgress = null,
+        CancellationToken                ct               = default)
     {
         string modelPath = await EnsureModelAsync(ct);
 
@@ -94,6 +95,8 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
             // SynthesizeAsync returns raw 16-bit PCM bytes — no WAV header.
             byte[] pcm = await synthesizer.SynthesizeAsync(text, voice, new KokoroTTSPipelineConfig());
             pcmChunks.Add(pcm);
+
+            segmentProgress?.Report((i + 1, total));
         }
 
         logger.LogInformation("Stitching {Count} segments → {Path}", pcmChunks.Count, outputPath);

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Logging;
 using OpenAI;
 using OpenAI.Audio;
 using PodSlacker.Core.Models;
@@ -13,6 +14,16 @@ namespace PodSlacker.Core.Pipeline;
 /// </summary>
 public static class PipelineClientFactory
 {
+    // Optional logger; callers can supply one for diagnostic output.
+    private static ILogger? _logger;
+
+    /// <summary>
+    /// Registers a logger so the factory can emit diagnostic output about
+    /// which URL, model, and API key (prefix only) it is using.
+    /// Call once at startup — e.g. from <c>Program.cs</c>.
+    /// </summary>
+    public static void UseLogger(ILogger logger) => _logger = logger;
+
     /// <summary>
     /// Builds an <see cref="IChatClient"/> from the base LLM settings in
     /// <paramref name="config"/>.  The API key must be present in the environment
@@ -27,6 +38,15 @@ public static class PipelineClientFactory
     {
         string apiKey = RequireEnv(config.LlmApiKeyEnv,
             $"LLM API key (set the '{config.LlmApiKeyEnv}' environment variable)");
+
+        string endpoint = config.LlmBaseUrl ?? "(default OpenAI)";
+        string keyHint  = apiKey.Length > 8
+            ? $"{apiKey[..8]}…({apiKey.Length} chars)"
+            : "(too short — likely wrong)";
+
+        _logger?.LogInformation(
+            "LLM client → endpoint: {Endpoint} | model: {Model} | key env: {KeyEnv} | key: {KeyHint}",
+            endpoint, config.LlmModel, config.LlmApiKeyEnv, keyHint);
 
         var openAiClient = config.LlmBaseUrl is not null
             ? new OpenAIClient(

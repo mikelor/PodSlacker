@@ -147,7 +147,23 @@ public sealed class PodSlackerPipeline(
             string ext    = isKokoro ? ".wav" : ".mp3";
             audioPath     = Path.Combine(outputDir, $"{baseName}_podcast{ext}");
 
-            Report(PipelineStep.GeneratingAudio, "Generating audio…", 50);
+            Report(PipelineStep.GeneratingAudio, $"Generating audio… (0 / {segments.Count} segments)", 50);
+
+            // Per-segment callback: maps segment index into the 50–65 % range and
+            // updates the progress message so the UI shows live segment counts.
+            // Audio occupies the 50–65 % band; frame capture starts at 65 %.
+            const int audioStartPct = 50;
+            const int audioEndPct   = 65;
+            var segmentProgress = new Progress<(int current, int total)>(t =>
+            {
+                int pct = t.total > 0
+                    ? audioStartPct + (t.current * (audioEndPct - audioStartPct) / t.total)
+                    : audioStartPct;
+                progress?.Report(new PipelineProgress(
+                    PipelineStep.GeneratingAudio,
+                    $"Generating audio… ({t.current} / {t.total} segments)",
+                    pct));
+            });
 
             if (isKokoro)
             {
@@ -155,7 +171,7 @@ public sealed class PodSlackerPipeline(
                     segments, audioPath,
                     config.VoiceHost1, config.VoiceHost2,
                     config.Host1Name, config.Host2Name,
-                    ct);
+                    segmentProgress, ct);
             }
             else if (ttsClient is not null)
             {
@@ -163,7 +179,7 @@ public sealed class PodSlackerPipeline(
                     ttsClient, segments, audioPath,
                     config.VoiceHost1, config.VoiceHost2,
                     config.TtsModel, config.Host1Name, config.Host2Name,
-                    ct);
+                    segmentProgress, ct);
             }
             else
             {

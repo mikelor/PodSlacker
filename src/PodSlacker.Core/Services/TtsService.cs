@@ -24,15 +24,16 @@ public sealed class TtsService(ILogger<TtsService> logger)
     /// <paramref name="outputPath"/>.
     /// </summary>
     public async Task GenerateAudioAsync(
-        AudioClient             client,
-        List<DialogueSegment>   segments,
-        string                  outputPath,
-        string                  voiceHost1  = "onyx",
-        string                  voiceHost2  = "nova",
-        string                  ttsModel    = "tts-1",
-        string                  host1Name   = "ALEX",
-        string                  host2Name   = "JORDAN",
-        CancellationToken       ct          = default)
+        AudioClient                          client,
+        List<DialogueSegment>                segments,
+        string                               outputPath,
+        string                               voiceHost1       = "onyx",
+        string                               voiceHost2       = "nova",
+        string                               ttsModel         = "tts-1",
+        string                               host1Name        = "ALEX",
+        string                               host2Name        = "JORDAN",
+        IProgress<(int current, int total)>? segmentProgress  = null,
+        CancellationToken                    ct               = default)
     {
         var voiceMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -71,6 +72,8 @@ public sealed class TtsService(ILogger<TtsService> logger)
             chunks.Add(segBytes);
             if (i < total - 1)
                 chunks.Add(pauseBytes);
+
+            segmentProgress?.Report((i + 1, total));
         }
 
         // Write stitched audio.

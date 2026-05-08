@@ -51,6 +51,34 @@ builder.Services.AddHostedService<JobEvictionService>();
 
 var app = builder.Build();
 
+// ── Wire factory logger so it can emit diagnostics per-job ──────────────────
+PodSlacker.Core.Pipeline.PipelineClientFactory.UseLogger(
+    app.Services.GetRequiredService<ILoggerFactory>()
+       .CreateLogger("PodSlacker.Core.Pipeline.PipelineClientFactory"));
+
+// ── Startup validation — warn loudly about missing API keys ─────────────────
+// These keys are read lazily inside PipelineClientFactory, so a missing key
+// produces a cryptic 401 from the upstream API instead of an obvious error.
+// Logging a warning at startup makes misconfiguration immediately visible.
+{
+    var startupLog = app.Services.GetRequiredService<ILogger<Program>>();
+
+    void WarnIfMissing(string varName, string purpose)
+    {
+        if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable(varName)))
+            startupLog.LogWarning(
+                "Environment variable '{Var}' is not set. " +
+                "Jobs that require {Purpose} will fail with 401 Unauthorized.",
+                varName, purpose);
+        else
+            startupLog.LogInformation("✓ {Var} is set.", varName);
+    }
+
+    WarnIfMissing("OPENROUTER_API_KEY", "OpenRouter LLM inference");
+    WarnIfMissing("OPENAI_API_KEY",     "OpenAI TTS (only needed when tts_engine=openai)");
+    WarnIfMissing("YOUTUBE_API_KEY",    "YouTube Data API metadata fallback");
+}
+
 // ── Middleware ────────────────────────────────────────────────────────────────
 
 // API key authentication — every request must supply X-Api-Key.
