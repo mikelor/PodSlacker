@@ -50,6 +50,12 @@ public static class PageGeneratorService
     /// When <see langword="false"/>, the HTML references assets via relative paths — suitable
     /// for GitHub Pages where audio and images are uploaded as separate files.
     /// </param>
+    /// <param name="githubPagesIndexUrl">
+    /// When non-<see langword="null"/>, a "← Back to Index" pill linking to this URL is
+    /// rendered to the left of the "Watch on YouTube" pill in the page header.
+    /// Typically the root URL of the GitHub Pages site (e.g.
+    /// <c>https://username.github.io/podslacker-pages/</c>).
+    /// </param>
     /// <returns>
     /// A <see cref="PageGeneratorResult"/> containing the path to the written HTML file and,
     /// when <paramref name="embedAssets"/> is <see langword="false"/>, the list of asset
@@ -59,14 +65,15 @@ public static class PageGeneratorService
         string              videoId,
         string              url,
         string              outputDir,
-        string?             audioPath      = null,
-        List<string>?       imagePaths     = null,
-        string?             mdPath         = null,
-        string?             title          = null,
-        string?             baseName       = null,
-        string?             transcriptPath = null,
-        List<string>?       frameCaptions  = null,
-        bool                embedAssets    = true)
+        string?             audioPath           = null,
+        List<string>?       imagePaths          = null,
+        string?             mdPath              = null,
+        string?             title               = null,
+        string?             baseName            = null,
+        string?             transcriptPath      = null,
+        List<string>?       frameCaptions       = null,
+        bool                embedAssets         = true,
+        string?             githubPagesIndexUrl = null)
     {
         var    assets     = new List<string>();  // populated only when embedAssets=false
         string summaryHtml = BuildSummaryHtml(mdPath);
@@ -109,7 +116,14 @@ public static class PageGeneratorService
         sb.Append("<header class=\"page-header\">\n");
         sb.Append($"  <h1>{headerH1}</h1>\n");
         sb.Append(headerSub);
+        sb.Append("  <div class=\"header-links\">\n");
+        if (githubPagesIndexUrl is not null)
+        {
+            string indexUrlEsc = HtmlEncode(githubPagesIndexUrl);
+            sb.Append($"  <a class=\"source-link\" href=\"{indexUrlEsc}\" target=\"_blank\" rel=\"noopener\">&#8592; Back to Index</a>\n");
+        }
         sb.Append($"  <a class=\"source-link\" href=\"{urlEsc}\" target=\"_blank\" rel=\"noopener\">Watch on YouTube &#8599;</a>\n");
+        sb.Append("  </div>\n");
         sb.Append("</header>\n\n");
         sb.Append("<div class=\"content\">\n");
         sb.Append(gallerySection);
@@ -389,7 +403,8 @@ public static class PageGeneratorService
         .vid-badge { display: inline-block; margin-top: 6px; font-size: 0.75rem; color: var(--muted); font-family: "SF Mono", Consolas, monospace; }
         .vid-badge a { color: inherit; text-decoration: none; border-bottom: 1px dotted currentColor; }
         .vid-badge a:hover { opacity: .8; }
-        .source-link { display: inline-block; margin-top: 14px; padding: 6px 16px; background: rgba(88,166,255,.1); color: var(--accent); border: 1px solid rgba(88,166,255,.3); border-radius: 20px; font-size: 0.84rem; text-decoration: none; transition: background .2s; }
+        .header-links { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+        .source-link { display: inline-block; padding: 6px 16px; background: rgba(88,166,255,.1); color: var(--accent); border: 1px solid rgba(88,166,255,.3); border-radius: 20px; font-size: 0.84rem; text-decoration: none; transition: background .2s; }
         .source-link:hover { background: rgba(88,166,255,.2); }
         .content { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
         .section { margin-bottom: 48px; }

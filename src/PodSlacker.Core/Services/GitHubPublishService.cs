@@ -282,6 +282,83 @@ public sealed class GitHubPublishService(ILogger<GitHubPublishService> logger)
         return $"https://{username}.github.io/{repoName}/{remotePage}";
     }
 
+    // ── Index URL helper ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the root GitHub Pages URL for the given repository
+    /// (e.g. <c>https://alice.github.io/podslacker-pages/</c>).
+    /// Returns <see langword="null"/> when no valid token is available or the
+    /// GitHub API call fails, so callers can degrade gracefully.
+    /// </summary>
+    public async Task<string?> GetPagesIndexUrlAsync(
+        string  repoName    = "podslacker-pages",
+        string  tokenEnvVar = "GITHUB_TOKEN",
+        string? tokenValue  = null,
+        CancellationToken ct = default)
+    {
+        string? token = tokenValue is { Length: > 0 }
+            ? tokenValue
+            : Environment.GetEnvironmentVariable(tokenEnvVar);
+
+        if (string.IsNullOrEmpty(token)) return null;
+
+        try
+        {
+            var github = new GitHubClient(new ProductHeaderValue("PodSlacker"));
+            github.Credentials = new Credentials(token);
+            var me = await github.User.Current();
+            return $"https://{me.Login}.github.io/{repoName}/";
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning("Could not resolve GitHub Pages index URL: {Msg}", ex.Message);
+            return null;
+        }
+    }
+
+    // ── Folder listing ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Returns the names of all top-level subfolders present on the publish branch.
+    /// Returns an empty list when the repository or branch does not yet exist,
+    /// or when no valid token is available.
+    /// </summary>
+    public async Task<List<string>> ListFoldersAsync(
+        string  repoName    = "podslacker-pages",
+        string  branch      = "gh-pages",
+        string  tokenEnvVar = "GITHUB_TOKEN",
+        string? tokenValue  = null,
+        CancellationToken ct = default)
+    {
+        string? token = tokenValue is { Length: > 0 }
+            ? tokenValue
+            : Environment.GetEnvironmentVariable(tokenEnvVar);
+
+        if (string.IsNullOrEmpty(token)) return [];
+
+        try
+        {
+            var github = new GitHubClient(new ProductHeaderValue("PodSlacker"));
+            github.Credentials = new Credentials(token);
+
+            var me       = await github.User.Current();
+            var branchRef = await github.Git.Reference.Get(me.Login, repoName, $"heads/{branch}");
+            var tree      = await github.Git.Tree.GetRecursive(me.Login, repoName, branchRef.Object.Sha);
+
+            // Return only top-level directory entries (no slash in path).
+            return tree.Tree
+                .Where(t => t.Type == "tree" && !t.Path.Contains('/'))
+                .Select(t => t.Path)
+                .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is NotFoundException or AuthorizationException or RateLimitExceededException)
+        {
+            logger.LogWarning("Could not list GitHub folders: {Msg}", ex.Message);
+            return [];
+        }
+    }
+
     // ── README generator ─────────────────────────────────────────────────────
 
     /// <summary>

@@ -20,6 +20,10 @@ public sealed class FrameCaptureService(ILogger<FrameCaptureService> logger)
     /// Returns a list of (filePath, timestampSeconds) pairs for successfully saved
     /// frames. Skipped frames are omitted.
     /// </summary>
+    /// <param name="streamUrl">Direct HTTP URL to the video stream (from YoutubeExplode's stream manifest).</param>
+    /// <param name="timestamps">Ordered list of timestamps (in seconds) to seek to and capture.</param>
+    /// <param name="outputDir">Directory where the JPEG frame files will be written.</param>
+    /// <param name="videoId">Video identifier used as a prefix in the output filenames.</param>
     /// <param name="frameProgress">
     /// Optional progress sink; receives <c>(current, total)</c> after each frame is
     /// attempted (whether saved successfully or skipped).

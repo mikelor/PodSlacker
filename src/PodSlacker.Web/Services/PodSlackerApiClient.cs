@@ -125,6 +125,32 @@ public sealed class PodSlackerApiClient(HttpClient http)
         return status.Id;
     }
 
+    /// <summary>
+    /// Returns the top-level folder names on the GitHub Pages publish branch.
+    /// Returns an empty list when the repository/branch does not exist or the token is invalid.
+    /// </summary>
+    public async Task<List<string>> GetGithubFoldersAsync(
+        string  repo   = "podslacker-pages",
+        string  branch = "gh-pages",
+        string? token  = null,
+        CancellationToken ct = default)
+    {
+        string url = $"api/github-folders?repo={Uri.EscapeDataString(repo)}&branch={Uri.EscapeDataString(branch)}";
+        if (!string.IsNullOrWhiteSpace(token))
+            url += $"&token={Uri.EscapeDataString(token)}";
+
+        try
+        {
+            var response = await http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode) return [];
+            return await response.Content.ReadFromJsonAsync<List<string>>(JsonOptions, ct) ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     /// <summary>Returns all in-memory jobs, newest first.</summary>
     public async Task<List<JobStatusDto>> GetAllJobsAsync(CancellationToken ct = default)
     {

@@ -463,6 +463,66 @@ footer a:hover {
   color: var(--ps-accent);
 }
 
+/* ── Batch progress page ───────────────────────────────────────────────────── */
+
+.ps-batch-card .ps-batch-title {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--ps-text);
+  min-width: 0;   /* allow text-truncate to work inside flex */
+}
+
+/* Slightly highlight the card on hover to hint it's interactive */
+.ps-batch-card:hover {
+  border-color: rgba(88, 166, 255, 0.35) !important;
+}
+
+/* ── URL textarea ──────────────────────────────────────────────────────────── */
+
+.ps-url-textarea {
+  resize: vertical;
+  min-height: 80px;
+  max-height: 220px;
+  font-family: "SF Mono", Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+/* ── Folder combo (select + optional text input) ───────────────────────────── */
+
+.ps-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ps-folder-refresh-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--ps-bg);
+  border: 1px solid var(--ps-border);
+  border-radius: 6px;
+  color: var(--ps-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ps-folder-refresh-btn:hover:not(:disabled) {
+  border-color: var(--ps-accent);
+  color: var(--ps-accent);
+}
+
+.ps-folder-refresh-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* ── Scrollbar ─────────────────────────────────────────────────────────────── */
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }

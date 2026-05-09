@@ -33,16 +33,29 @@
         <div class="card shadow-sm">
             <div class="card-body p-4">
 
-                <!-- URL -->
+                <!-- URL(s) -->
                 <div class="mb-4">
-                    <label class="form-label ps-section-label" for="urlInput">YouTube URL</label>
-                    <input id="urlInput"
-                           class="form-control form-control-lg"
-                           placeholder="Paste or type your YouTube URL here (e.g. https://youtu.be/dQw4w9WgXcQ)"
-                           @bind="videoUrl"
-                           @bind:event="oninput"
-                           @onkeydown="OnKeyDown"
-                           disabled="@isSubmitting" />
+                    <div class="d-flex justify-content-between align-items-baseline mb-1">
+                        <label class="form-label ps-section-label mb-0" for="urlInput">
+                            YouTube URL(s)
+                        </label>
+                        @if (ParsedUrlCount > 1)
+                        {
+                            <span class="small font-mono" style="color: var(--ps-accent);">
+                                @ParsedUrlCount URLs
+                            </span>
+                        }
+                    </div>
+                    <textarea id="urlInput"
+                              class="form-control ps-url-textarea"
+                              placeholder="@("Paste one URL per line\nhttps://youtu.be/dQw4w9WgXcQ\nhttps://www.youtube.com/watch?v=...")"
+                              @bind="videoUrl"
+                              @bind:event="oninput"
+                              rows="3"
+                              disabled="@isSubmitting"></textarea>
+                    <div class="text-muted mt-1" style="font-size: 0.72rem;">
+                        One URL per line — submit multiple videos at once.
+                    </div>
                 </div>
 
                 <!-- Format toggle -->
@@ -142,9 +155,49 @@
                                     Folder name
                                     <span class="opacity-75">(optional — organises pages in a subfolder)</span>
                                 </label>
-                                <input id="ghFolder" class="form-control form-control-sm"
-                                       placeholder="e.g. google-cloud-next"
-                                       @bind="githubFolder" disabled="@isSubmitting" />
+                                <div class="ps-folder-row">
+                                    <button type="button"
+                                            class="ps-folder-refresh-btn"
+                                            title="Load folders from repository"
+                                            @onclick="FetchFoldersAsync"
+                                            disabled="@(isSubmitting || isFetchingFolders)">
+                                        @if (isFetchingFolders)
+                                        {
+                                            <span class="spinner-border spinner-border-sm" role="status" style="width:14px;height:14px;border-width:2px;"></span>
+                                        }
+                                        else
+                                        {
+                                            <span>↻</span>
+                                        }
+                                    </button>
+
+                                    @if (githubFolderOptions.Count > 0)
+                                    {
+                                        <select id="ghFolder" class="form-select form-select-sm flex-fill"
+                                                @bind="githubFolderSelection"
+                                                disabled="@isSubmitting">
+                                            <option value="">(root — no subfolder)</option>
+                                            @foreach (var f in githubFolderOptions)
+                                            {
+                                                <option value="@f">@f</option>
+                                            }
+                                            <option value="__new__">＋ New folder…</option>
+                                        </select>
+                                    }
+                                    else
+                                    {
+                                        <input id="ghFolder" class="form-control form-control-sm flex-fill"
+                                               placeholder="e.g. google-cloud-next"
+                                               @bind="githubFolder" disabled="@isSubmitting" />
+                                    }
+                                </div>
+
+                                @if (githubFolderOptions.Count > 0 && githubFolderSelection == "__new__")
+                                {
+                                    <input class="form-control form-control-sm mt-1"
+                                           placeholder="New folder name…"
+                                           @bind="githubFolder" disabled="@isSubmitting" />
+                                }
                             </div>
                             <div>
                                 <label class="form-label small text-muted mb-1" for="ghToken">
@@ -153,7 +206,10 @@
                                 </label>
                                 <input id="ghToken" type="password" class="form-control form-control-sm"
                                        placeholder="ghp_…"
-                                       @bind="githubToken" disabled="@isSubmitting" />
+                                       @bind="githubToken"
+                                       @bind:event="oninput"
+                                       @onblur="OnTokenBlur"
+                                       disabled="@isSubmitting" />
                                 <div class="text-muted mt-1" style="font-size: 0.72rem;">
                                     Needs <code>repo</code> + <code>pages</code> scopes.
                                     <a href="https://github.com/settings/tokens" target="_blank"
@@ -175,7 +231,7 @@
                         }
                         else
                         {
-                            <span>🎙️ Generate Podcast</span>
+                            <span>@SubmitLabel</span>
                         }
                     </button>
                 </div>
@@ -280,6 +336,12 @@
     private string  githubRepo    = "podslacker-pages";
     private string  githubFolder  = "";
     private string  githubToken   = "";
+
+    // ── GitHub folder dropdown state ──────────────────────────────────────────
+
+    private List<string> githubFolderOptions   = [];
+    private string       githubFolderSelection = "";  // "" = root, "__new__" = new folder, or folder name
+    private bool         isFetchingFolders;
     private bool    isSubmitting;
     private string? errorMessage;
 
@@ -357,33 +419,56 @@
 
     // ── Interaction ───────────────────────────────────────────────────────────
 
-    private async Task OnKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter") await SubmitAsync();
-    }
-
     private async Task SubmitAsync()
     {
-        if (string.IsNullOrWhiteSpace(videoUrl) || isSubmitting) return;
+        var urls = ParseUrls();
+        if (urls.Count == 0 || isSubmitting) return;
 
         isSubmitting = true;
         errorMessage = null;
 
+        // Resolve the effective folder value from the combo state.
+        string effectiveFolder = githubFolderOptions.Count > 0
+            ? (githubFolderSelection == "__new__" ? githubFolder.Trim() : githubFolderSelection)
+            : githubFolder.Trim();
+
         try
         {
-            string jobId = await ApiClient.SubmitJobAsync(
-                videoUrl.Trim(),
-                hosts:             hosts,
-                host1Name:         string.IsNullOrWhiteSpace(host1Name) ? "JORDAN" : host1Name.Trim().ToUpperInvariant(),
-                host2Name:         string.IsNullOrWhiteSpace(host2Name) ? "MIKE"   : host2Name.Trim().ToUpperInvariant(),
-                numFrames:         numFrames,
-                llmModel:          llmModel,
-                publishGitHub:     publishGitHub,
-                githubRepo:        githubRepo,
-                githubTokenValue:  string.IsNullOrWhiteSpace(githubToken) ? null : githubToken,
-                githubFolder:      githubFolder.Trim());
+            var jobIds = new List<string>(urls.Count);
+            foreach (var url in urls)
+            {
+                try
+                {
+                    string jobId = await ApiClient.SubmitJobAsync(
+                        url,
+                        hosts:             hosts,
+                        host1Name:         string.IsNullOrWhiteSpace(host1Name) ? "JORDAN" : host1Name.Trim().ToUpperInvariant(),
+                        host2Name:         string.IsNullOrWhiteSpace(host2Name) ? "MIKE"   : host2Name.Trim().ToUpperInvariant(),
+                        numFrames:         numFrames,
+                        llmModel:          llmModel,
+                        publishGitHub:     publishGitHub,
+                        githubRepo:        githubRepo,
+                        githubTokenValue:  string.IsNullOrWhiteSpace(githubToken) ? null : githubToken,
+                        githubFolder:      effectiveFolder);
+                    jobIds.Add(jobId);
+                }
+                catch
+                {
+                    // Skip URLs the server rejects (invalid, unreachable, etc.)
+                }
+            }
 
-            Nav.NavigateTo($"/job/{jobId}");
+            if (jobIds.Count == 0)
+            {
+                errorMessage = "None of the submitted URLs could be accepted. Check they are valid YouTube links.";
+                isSubmitting = false;
+                return;
+            }
+
+            if (jobIds.Count == 1)
+                Nav.NavigateTo($"/job/{jobIds[0]}");
+            else
+                Nav.NavigateTo($"/batch?jobs={string.Join(",", jobIds)}");
         }
         catch (Exception ex)
         {
@@ -392,7 +477,61 @@
         }
     }
 
+    private async Task OnTokenBlur()
+    {
+        // Auto-fetch folders whenever the token field loses focus,
+        // provided the repo name is also filled in.
+        if (publishGitHub && !string.IsNullOrWhiteSpace(githubRepo))
+            await FetchFoldersAsync();
+    }
+
+    private async Task FetchFoldersAsync()
+    {
+        if (isFetchingFolders) return;
+        isFetchingFolders = true;
+        StateHasChanged();
+
+        try
+        {
+            githubFolderOptions = await ApiClient.GetGithubFoldersAsync(
+                repo:   string.IsNullOrWhiteSpace(githubRepo) ? "podslacker-pages" : githubRepo,
+                token:  string.IsNullOrWhiteSpace(githubToken) ? null : githubToken);
+
+            // Preserve existing selection if still valid.
+            if (!githubFolderOptions.Contains(githubFolderSelection)
+                && githubFolderSelection != "__new__")
+            {
+                githubFolderSelection = "";
+                githubFolder = "";
+            }
+        }
+        finally
+        {
+            isFetchingFolders = false;
+            StateHasChanged();
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Parses the textarea into a deduplicated list of valid-looking YouTube URLs.
+    /// Lines that don't contain "youtube.com" or "youtu.be" are silently skipped.
+    /// </summary>
+    private List<string> ParseUrls() =>
+        videoUrl
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Where(line => line.Contains("youtube.com", StringComparison.OrdinalIgnoreCase)
+                        || line.Contains("youtu.be",   StringComparison.OrdinalIgnoreCase))
+            .Distinct()
+            .ToList();
+
+    private int    ParsedUrlCount => ParseUrls().Count;
+    private string SubmitLabel    => ParsedUrlCount switch
+    {
+        0 or 1 => "🎙️ Generate Podcast",
+        int n  => $"🎙️ Generate {n} Podcasts",
+    };
 
     private static string BadgeClass(string status) => status switch
     {

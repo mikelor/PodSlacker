@@ -33,6 +33,15 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
     private const string ModelDownloadUrl =
         "https://github.com/taylorchu/kokoro-onnx/releases/download/v0.2.0/kokoro.onnx";
 
+    // Serialises all Kokoro sessions.
+    // KokoroVoiceManager uses a static lazy initialiser that is not thread-safe:
+    // two concurrent jobs racing to call GetVoice() can both see a partially-loaded
+    // voice list and fail even for voices that are nominally available.
+    // KokoroWavSynthesizer also owns a background ONNX thread, so running two
+    // synthesizers concurrently causes contention on the same ONNX runtime.
+    // One job at a time is the safest and most reliable approach.
+    private static readonly SemaphoreSlim _kokoroLock = new(1, 1);
+
     // ── Public API ───────────────────────────────────────────────────────────
 
     /// <summary>
@@ -66,43 +75,55 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
     {
         string modelPath = await EnsureModelAsync(ct);
 
-        // KokoroWavSynthesizer owns a background ONNX inference thread.
-        // Dispose after synthesis to release it cleanly.
-        using var synthesizer = new KokoroWavSynthesizer(modelPath, new SessionOptions());
+        // Wait for any other concurrent Kokoro session to finish before proceeding.
+        if (_kokoroLock.CurrentCount == 0)
+            logger.LogInformation("Another Kokoro session is active — waiting for it to finish…");
 
-        // KokoroVoiceManager.GetVoice auto-loads the bundled voices/ folder on
-        // first call via AppDomain.CurrentDomain.BaseDirectory.
-        var voiceMap = new Dictionary<string, KokoroVoice>(StringComparer.OrdinalIgnoreCase)
+        await _kokoroLock.WaitAsync(ct);
+        try
         {
-            [host1Name] = LoadVoice(voiceHost1, "am_michael"),
-            [host2Name] = LoadVoice(voiceHost2, "af_heart"),
-        };
-        var fallback = voiceMap.Values.First();
+            // KokoroWavSynthesizer owns a background ONNX inference thread.
+            // Dispose after synthesis to release it cleanly.
+            using var synthesizer = new KokoroWavSynthesizer(modelPath, new SessionOptions());
 
-        int total = segments.Count;
-        var pcmChunks = new List<byte[]>(total);
+            // KokoroVoiceManager.GetVoice auto-loads the bundled voices/ folder on
+            // first call via AppDomain.CurrentDomain.BaseDirectory.
+            var voiceMap = new Dictionary<string, KokoroVoice>(StringComparer.OrdinalIgnoreCase)
+            {
+                [host1Name] = LoadVoice(voiceHost1, "am_michael"),
+                [host2Name] = LoadVoice(voiceHost2, "af_heart"),
+            };
+            var fallback = voiceMap.Values.First();
 
-        for (int i = 0; i < total; i++)
-        {
-            ct.ThrowIfCancellationRequested();
+            int total = segments.Count;
+            var pcmChunks = new List<byte[]>(total);
 
-            var (speaker, text) = segments[i];
-            string preview = text.Length > 60 ? text[..60] + "…" : text;
-            logger.LogInformation("Segment {Idx}/{Total}  [{Speaker}]  \"{Preview}\"",
-                i + 1, total, speaker, preview);
+            for (int i = 0; i < total; i++)
+            {
+                ct.ThrowIfCancellationRequested();
 
-            var voice = voiceMap.GetValueOrDefault(speaker, fallback);
+                var (speaker, text) = segments[i];
+                string preview = text.Length > 60 ? text[..60] + "…" : text;
+                logger.LogInformation("Segment {Idx}/{Total}  [{Speaker}]  \"{Preview}\"",
+                    i + 1, total, speaker, preview);
 
-            // SynthesizeAsync returns raw 16-bit PCM bytes — no WAV header.
-            byte[] pcm = await synthesizer.SynthesizeAsync(text, voice, new KokoroTTSPipelineConfig());
-            pcmChunks.Add(pcm);
+                var voice = voiceMap.GetValueOrDefault(speaker, fallback);
 
-            segmentProgress?.Report((i + 1, total));
+                // SynthesizeAsync returns raw 16-bit PCM bytes — no WAV header.
+                byte[] pcm = await synthesizer.SynthesizeAsync(text, voice, new KokoroTTSPipelineConfig());
+                pcmChunks.Add(pcm);
+
+                segmentProgress?.Report((i + 1, total));
+            }
+
+            logger.LogInformation("Stitching {Count} segments → {Path}", pcmChunks.Count, outputPath);
+            WriteWavFile(pcmChunks, outputPath);
+            logger.LogInformation("Audio written to {Path}", outputPath);
         }
-
-        logger.LogInformation("Stitching {Count} segments → {Path}", pcmChunks.Count, outputPath);
-        WriteWavFile(pcmChunks, outputPath);
-        logger.LogInformation("Audio written to {Path}", outputPath);
+        finally
+        {
+            _kokoroLock.Release();
+        }
     }
 
     // ── Model management ─────────────────────────────────────────────────────
@@ -194,8 +215,25 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
                 "Available voices: {Voices}",
                 name, fallbackName,
                 string.Join(", ", KokoroVoiceManager.Voices.Select(v => v.Name)));
+        }
 
+        try
+        {
             return KokoroVoiceManager.GetVoice(fallbackName);
+        }
+        catch
+        {
+            // Last resort: use the first available voice rather than crashing.
+            var any = KokoroVoiceManager.Voices.FirstOrDefault()
+                ?? throw new InvalidOperationException(
+                    "No Kokoro voices are available in the bundled voice pack. " +
+                    "Ensure KokoroSharp.CPU is correctly installed.");
+
+            logger.LogWarning(
+                "Fallback voice '{Fallback}' also not found. Using '{Any}' as last resort.",
+                fallbackName, any.Name);
+
+            return any;
         }
     }
 

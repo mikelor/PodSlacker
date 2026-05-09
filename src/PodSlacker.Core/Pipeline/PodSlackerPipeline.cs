@@ -240,6 +240,15 @@ public sealed class PodSlackerPipeline(
             }
         }
 
+        // ── 5b. Resolve GitHub Pages index URL for the "Back to Index" pill ────
+        // Done before page generation so the URL can be embedded in the HTML.
+        string? ghPagesIndexUrl = null;
+        if (config.PublishGithub)
+        {
+            ghPagesIndexUrl = await githubService.GetPagesIndexUrlAsync(
+                config.GithubRepo, config.GithubTokenEnv, config.GithubTokenValue, ct);
+        }
+
         // ── 6. HTML page ─────────────────────────────────────────────────────
         string? htmlPath = null;
         IReadOnlyList<string> pageAssets = [];
@@ -263,7 +272,8 @@ public sealed class PodSlackerPipeline(
                 baseName,
                 transcriptPath,
                 frameCaptions,
-                embedAssets);
+                embedAssets,
+                ghPagesIndexUrl);
             htmlPath   = pageResult.HtmlPath;
             pageAssets = pageResult.AssetPaths;
             logger.LogInformation("HTML page written to {Path}", htmlPath);

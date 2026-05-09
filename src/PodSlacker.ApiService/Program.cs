@@ -212,6 +212,24 @@ api.MapGet("/jobs/{id}/page", (string id, JobStore store) =>
 .Produces(StatusCodes.Status404NotFound)
 .Produces(StatusCodes.Status500InternalServerError);
 
+// GET /api/github-folders — list top-level folders on the publish branch
+api.MapGet("/github-folders", async (
+    GitHubPublishService ghService,
+    string?              repo   = "podslacker-pages",
+    string?              branch = "gh-pages",
+    string?              token  = null) =>
+{
+    var folders = await ghService.ListFoldersAsync(
+        repo   ?? "podslacker-pages",
+        branch ?? "gh-pages",
+        tokenValue: string.IsNullOrWhiteSpace(token) ? null : token);
+
+    return Results.Ok(folders);
+})
+.WithName("ListGitHubFolders")
+.WithSummary("List top-level folders on the GitHub Pages publish branch")
+.Produces<List<string>>();
+
 app.Run();
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
