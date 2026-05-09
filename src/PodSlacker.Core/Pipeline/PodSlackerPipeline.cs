@@ -222,10 +222,19 @@ public sealed class PodSlackerPipeline(
 
         // ── 6. HTML page ─────────────────────────────────────────────────────
         string? htmlPath = null;
+        IReadOnlyList<string> pageAssets = [];
         if (!config.NoPage)
         {
+            // When publishing to GitHub, default to referenced (non-embedded) assets
+            // unless the config explicitly requests embedding.  Referenced mode uploads
+            // audio and images as separate files so the HTML stays small and GitHub
+            // Pages serves it correctly as HTML rather than a binary blob.
+            bool embedAssets = config.PublishGithub
+                ? config.GithubEmbedAssets
+                : true;   // local-only runs keep the self-contained single-file behaviour
+
             Report(PipelineStep.GeneratingPage, "Generating HTML page…", 85);
-            htmlPath = PageGeneratorService.GeneratePage(
+            var pageResult = PageGeneratorService.GeneratePage(
                 videoId, videoUrl, outputDir,
                 audioPath,
                 capturedFrames.Select(f => f.FilePath).ToList(),
@@ -233,7 +242,10 @@ public sealed class PodSlackerPipeline(
                 title,
                 baseName,
                 transcriptPath,
-                frameCaptions);
+                frameCaptions,
+                embedAssets);
+            htmlPath   = pageResult.HtmlPath;
+            pageAssets = pageResult.AssetPaths;
             logger.LogInformation("HTML page written to {Path}", htmlPath);
         }
 
@@ -244,7 +256,9 @@ public sealed class PodSlackerPipeline(
             Report(PipelineStep.Publishing, "Publishing to GitHub Pages…", 95);
             ghPagesUrl = await githubService.PublishAsync(
                 htmlPath, config.GithubRepo, config.GithubTokenEnv,
-                config.GithubBranch, config.GithubTokenValue, ct);
+                config.GithubBranch, config.GithubTokenValue,
+                pageAssets.Count > 0 ? pageAssets : null,
+                ct);
             logger.LogInformation("Published to: {Url}", ghPagesUrl);
         }
 

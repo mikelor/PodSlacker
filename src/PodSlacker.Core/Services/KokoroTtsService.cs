@@ -52,6 +52,7 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
     /// </param>
     /// <param name="host1Name">Speaker label in <paramref name="segments"/> for host 1.</param>
     /// <param name="host2Name">Speaker label in <paramref name="segments"/> for host 2.</param>
+    /// <param name="segmentProgress">Optional progress sink; receives <c>(current, total)</c> after each segment is synthesised.</param>
     /// <param name="ct">Cancellation token.</param>
     public async Task GenerateAudioAsync(
         List<DialogueSegment>            segments,

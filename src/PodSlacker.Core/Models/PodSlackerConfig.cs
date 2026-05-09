@@ -137,4 +137,12 @@ public sealed record PodSlackerConfig
     public string? GithubTokenValue { get; init; }
     /// <summary>Git branch used as the GitHub Pages source (e.g. <c>gh-pages</c>). Created automatically if it does not exist.</summary>
     public string  GithubBranch     { get; init; } = "gh-pages";
+    /// <summary>
+    /// When <see langword="true"/>, audio and images are base64-encoded directly into the
+    /// published HTML so it works as a single self-contained file.
+    /// When <see langword="false"/> (default), audio and images are uploaded as separate files
+    /// and referenced via relative URLs — this produces a much smaller HTML file and is the
+    /// recommended mode for GitHub Pages.
+    /// </summary>
+    public bool    GithubEmbedAssets { get; init; } = false;
 }

@@ -2,16 +2,24 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
 using PodSlacker.Core.Audio;
-using PodSlacker.Core.Models;
 
 namespace PodSlacker.Core.Services;
 
 /// <summary>
-/// Generates a self-contained HTML page bundling the summary, key-moment
-/// images (base64-embedded), and audio player (base64-embedded).
-///
-/// Mirrors the Python generate_page() function — CSS, JS, and layout are
-/// identical so pages from both implementations look the same.
+/// The result of <see cref="PageGeneratorService.GeneratePage"/>.
+/// </summary>
+/// <param name="HtmlPath">Absolute path to the generated HTML file.</param>
+/// <param name="AssetPaths">
+/// Absolute paths of asset files (audio, images) that must be published
+/// alongside the HTML when <c>embedAssets</c> is <see langword="false"/>.
+/// Empty when assets are embedded.
+/// </param>
+public sealed record PageGeneratorResult(string HtmlPath, IReadOnlyList<string> AssetPaths);
+
+/// <summary>
+/// Generates an HTML page for the podcast episode and writes it to disk.
+/// Assets (audio, images) can be embedded as base64 data URIs (default) or
+/// referenced via relative paths for GitHub Pages / multi-file publishing.
 /// </summary>
 public static class PageGeneratorService
 {
@@ -21,14 +29,13 @@ public static class PageGeneratorService
     // ── Public API ───────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Generates a self-contained HTML page for the podcast episode and writes it to disk.
-    /// Audio and images are base64-embedded so the page works offline as a single file.
+    /// Generates an HTML page for the podcast episode and writes it to disk.
     /// </summary>
     /// <param name="videoId">YouTube video ID used to build the output filename and YouTube deep-link URLs.</param>
     /// <param name="url">Source YouTube URL displayed in the page header.</param>
     /// <param name="outputDir">Directory where the HTML file will be written.</param>
-    /// <param name="audioPath">Optional path to an MP3 file to embed in the audio player.</param>
-    /// <param name="imagePaths">Optional list of JPEG frame image paths to embed in the gallery.</param>
+    /// <param name="audioPath">Optional path to the audio file.</param>
+    /// <param name="imagePaths">Optional list of JPEG frame image paths.</param>
     /// <param name="mdPath">Optional path to the markdown summary file to render as HTML prose.</param>
     /// <param name="title">Optional video title displayed in the page header.</param>
     /// <param name="baseName">
@@ -37,8 +44,18 @@ public static class PageGeneratorService
     /// </param>
     /// <param name="transcriptPath">Optional path to the timestamped transcript text file shown in the collapsible section.</param>
     /// <param name="frameCaptions">Optional captions aligned by index with <paramref name="imagePaths"/>.</param>
-    /// <returns>Absolute path to the written HTML file.</returns>
-    public static string GeneratePage(
+    /// <param name="embedAssets">
+    /// When <see langword="true"/> (default), audio and images are base64-encoded directly
+    /// into the HTML so the page works as a single self-contained file.
+    /// When <see langword="false"/>, the HTML references assets via relative paths — suitable
+    /// for GitHub Pages where audio and images are uploaded as separate files.
+    /// </param>
+    /// <returns>
+    /// A <see cref="PageGeneratorResult"/> containing the path to the written HTML file and,
+    /// when <paramref name="embedAssets"/> is <see langword="false"/>, the list of asset
+    /// file paths (audio + images) that must be published alongside the HTML.
+    /// </returns>
+    public static PageGeneratorResult GeneratePage(
         string              videoId,
         string              url,
         string              outputDir,
@@ -48,11 +65,18 @@ public static class PageGeneratorService
         string?             title          = null,
         string?             baseName       = null,
         string?             transcriptPath = null,
-        List<string>?       frameCaptions  = null)
+        List<string>?       frameCaptions  = null,
+        bool                embedAssets    = true)
     {
-        string summaryHtml  = BuildSummaryHtml(mdPath);
-        var (audioElement, audioFname, hasAudio) = BuildAudioElement(audioPath);
-        string gallerySection    = BuildGallerySection(imagePaths, frameCaptions);
+        var    assets     = new List<string>();  // populated only when embedAssets=false
+        string summaryHtml = BuildSummaryHtml(mdPath);
+        var (audioElement, audioFname, hasAudio) =
+            embedAssets
+                ? BuildAudioElementEmbedded(audioPath)
+                : BuildAudioElementReferenced(audioPath, assets);
+        string gallerySection    = embedAssets
+            ? BuildGallerySectionEmbedded(imagePaths, frameCaptions)
+            : BuildGallerySectionReferenced(imagePaths, frameCaptions, assets);
         string transcriptSection = BuildTranscriptSection(transcriptPath, videoId);
         string playerBlock       = BuildPlayerBlock(hasAudio, audioElement, audioFname);
 
@@ -104,7 +128,7 @@ public static class PageGeneratorService
 
         string pagePath = Path.Combine(outputDir, $"{baseName ?? videoId}_page.html");
         File.WriteAllText(pagePath, sb.ToString(), Encoding.UTF8);
-        return pagePath;
+        return new PageGeneratorResult(pagePath, assets);
     }
 
     // ── Section builders ─────────────────────────────────────────────────────
@@ -116,7 +140,9 @@ public static class PageGeneratorService
         return Markdown.ToHtml(raw, MdPipeline);
     }
 
-    private static (string Element, string Fname, bool HasAudio) BuildAudioElement(string? audioPath)
+    // Embedded (base64) audio — assets list unchanged.
+    private static (string Element, string Fname, bool HasAudio)
+        BuildAudioElementEmbedded(string? audioPath)
     {
         if (audioPath is null || !File.Exists(audioPath))
             return (string.Empty, string.Empty, false);
@@ -140,7 +166,25 @@ public static class PageGeneratorService
         return (element, fname, true);
     }
 
-    private static string BuildGallerySection(List<string>? imagePaths, List<string>? captions)
+    // Referenced audio — emits a relative src path; adds the local path to assets.
+    private static (string Element, string Fname, bool HasAudio)
+        BuildAudioElementReferenced(string? audioPath, List<string> assets)
+    {
+        if (audioPath is null || !File.Exists(audioPath))
+            return (string.Empty, string.Empty, false);
+
+        string mime  = Path.GetExtension(audioPath).Equals(".wav", StringComparison.OrdinalIgnoreCase)
+            ? "audio/wav" : "audio/mpeg";
+        string fname = HtmlEncode(Path.GetFileName(audioPath));
+        string element = $"<audio id=\"audioEl\" preload=\"metadata\">" +
+                         $"<source src=\"{fname}\" type=\"{mime}\"></audio>";
+
+        assets.Add(audioPath);
+        return (element, fname, true);
+    }
+
+    // Embedded (base64) gallery — images become inline data URIs.
+    private static string BuildGallerySectionEmbedded(List<string>? imagePaths, List<string>? captions)
     {
         if (imagePaths is null || imagePaths.Count == 0) return string.Empty;
 
@@ -163,6 +207,43 @@ public static class PageGeneratorService
             items.Append($" loading=\"lazy\" data-caption=\"{captionEsc}\">");
             items.Append(figcaption);
             items.Append("</figure>\n");
+        }
+
+        if (items.Length == 0) return string.Empty;
+
+        return "\n<section class=\"section\">" +
+               "\n<h2 class=\"section-heading\">Key Moments</h2>" +
+               "\n<div class=\"gallery\">\n" +
+               items +
+               "\n</div>\n</section>";
+    }
+
+    // Referenced gallery — images use relative filename src; paths added to assets list.
+    private static string BuildGallerySectionReferenced(
+        List<string>? imagePaths, List<string>? captions, List<string> assets)
+    {
+        if (imagePaths is null || imagePaths.Count == 0) return string.Empty;
+
+        var items = new StringBuilder();
+        for (int idx = 0; idx < imagePaths.Count; idx++)
+        {
+            string imgPath = imagePaths[idx];
+            if (!File.Exists(imgPath)) continue;
+
+            string fname       = HtmlEncode(Path.GetFileName(imgPath));
+            string captionText = captions is not null && idx < captions.Count ? captions[idx] : string.Empty;
+            string captionEsc  = HtmlEncode(captionText);
+            string figcaption  = !string.IsNullOrEmpty(captionEsc)
+                ? $"<figcaption class=\"gal-caption\">{captionEsc}</figcaption>"
+                : $"<figcaption class=\"gal-caption\">{fname}</figcaption>";
+
+            items.Append($"<figure class=\"gal-item\">");
+            items.Append($"<img src=\"{fname}\" alt=\"{fname}\"");
+            items.Append($" loading=\"lazy\" data-caption=\"{captionEsc}\">");
+            items.Append(figcaption);
+            items.Append("</figure>\n");
+
+            assets.Add(imgPath);
         }
 
         if (items.Length == 0) return string.Empty;
