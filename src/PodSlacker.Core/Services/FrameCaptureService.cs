@@ -20,11 +20,16 @@ public sealed class FrameCaptureService(ILogger<FrameCaptureService> logger)
     /// Returns a list of (filePath, timestampSeconds) pairs for successfully saved
     /// frames. Skipped frames are omitted.
     /// </summary>
+    /// <param name="frameProgress">
+    /// Optional progress sink; receives <c>(current, total)</c> after each frame is
+    /// attempted (whether saved successfully or skipped).
+    /// </param>
     public List<CapturedFrame> CaptureFrames(
         string        streamUrl,
         List<double>  timestamps,
         string        outputDir,
-        string        videoId)
+        string        videoId,
+        IProgress<(int current, int total)>? frameProgress = null)
     {
         using var cap = new VideoCapture(streamUrl);
         if (!cap.IsOpened())
@@ -64,6 +69,10 @@ public sealed class FrameCaptureService(ILogger<FrameCaptureService> logger)
             {
                 logger.LogWarning("Frame {Idx}/{Total} at {Ts:F1}s — failed to write JPEG.", i + 1, total, ts);
             }
+
+            // Report progress after every attempt (success or skip) so the UI
+            // reflects how many frames have been processed so far.
+            frameProgress?.Report((i + 1, total));
         }
 
         return saved;

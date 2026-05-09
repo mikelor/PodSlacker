@@ -235,4 +235,5 @@ static JobStatusResponse ToStatusResponse(JobRecord job, string baseUrl) => new(
     LlmModel       = job.LlmModel,
     NumFrames      = job.NumFrames,
     PublishGitHub  = job.PublishGitHub,
+    GithubFolder   = job.GithubFolder,
 };

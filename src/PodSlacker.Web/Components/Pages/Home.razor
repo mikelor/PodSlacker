@@ -138,6 +138,15 @@
                                        @bind="githubRepo" disabled="@isSubmitting" />
                             </div>
                             <div>
+                                <label class="form-label small text-muted mb-1" for="ghFolder">
+                                    Folder name
+                                    <span class="opacity-75">(optional — organises pages in a subfolder)</span>
+                                </label>
+                                <input id="ghFolder" class="form-control form-control-sm"
+                                       placeholder="e.g. google-cloud-next"
+                                       @bind="githubFolder" disabled="@isSubmitting" />
+                            </div>
+                            <div>
                                 <label class="form-label small text-muted mb-1" for="ghToken">
                                     Personal Access Token
                                     <span class="opacity-75">(optional — overrides server <code>GITHUB_TOKEN</code>)</span>
@@ -269,6 +278,7 @@
     private string  llmModel      = "openrouter/auto:free";
     private bool    publishGitHub = false;
     private string  githubRepo    = "podslacker-pages";
+    private string  githubFolder  = "";
     private string  githubToken   = "";
     private bool    isSubmitting;
     private string? errorMessage;
@@ -370,7 +380,8 @@
                 llmModel:          llmModel,
                 publishGitHub:     publishGitHub,
                 githubRepo:        githubRepo,
-                githubTokenValue:  string.IsNullOrWhiteSpace(githubToken) ? null : githubToken);
+                githubTokenValue:  string.IsNullOrWhiteSpace(githubToken) ? null : githubToken,
+                githubFolder:      githubFolder.Trim());
 
             Nav.NavigateTo($"/job/{jobId}");
         }

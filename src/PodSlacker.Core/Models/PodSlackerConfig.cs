@@ -138,6 +138,13 @@ public sealed record PodSlackerConfig
     /// <summary>Git branch used as the GitHub Pages source (e.g. <c>gh-pages</c>). Created automatically if it does not exist.</summary>
     public string  GithubBranch     { get; init; } = "gh-pages";
     /// <summary>
+    /// Optional subfolder within the GitHub Pages repository where published files are placed.
+    /// For example <c>"google-cloud-next"</c> causes files to be committed as
+    /// <c>google-cloud-next/video_page.html</c> rather than at the repo root.
+    /// Leave empty (default) to publish directly to the root of the branch.
+    /// </summary>
+    public string  GithubFolder     { get; init; } = "";
+    /// <summary>
     /// When <see langword="true"/>, audio and images are base64-encoded directly into the
     /// published HTML so it works as a single self-contained file.
     /// When <see langword="false"/> (default), audio and images are uploaded as separate files

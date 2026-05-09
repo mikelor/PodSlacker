@@ -77,7 +77,9 @@ public static class PageGeneratorService
         string gallerySection    = embedAssets
             ? BuildGallerySectionEmbedded(imagePaths, frameCaptions)
             : BuildGallerySectionReferenced(imagePaths, frameCaptions, assets);
-        string transcriptSection = BuildTranscriptSection(transcriptPath, videoId);
+        string transcriptSection = embedAssets
+            ? BuildTranscriptSectionEmbedded(transcriptPath, videoId)
+            : BuildTranscriptSectionReferenced(transcriptPath, assets);
         string playerBlock       = BuildPlayerBlock(hasAudio, audioElement, audioFname);
 
         string urlEsc       = HtmlEncode(url);
@@ -255,7 +257,23 @@ public static class PageGeneratorService
                "\n</div>\n</section>";
     }
 
-    private static string BuildTranscriptSection(string? transcriptPath, string videoId)
+    // Referenced transcript — renders a download link; adds the local path to assets.
+    private static string BuildTranscriptSectionReferenced(string? transcriptPath, List<string> assets)
+    {
+        if (transcriptPath is null || !File.Exists(transcriptPath)) return string.Empty;
+
+        string fname = HtmlEncode(Path.GetFileName(transcriptPath));
+        assets.Add(transcriptPath);
+
+        return "\n<section class=\"section\">" +
+               "\n<h2 class=\"section-heading\">Transcript</h2>" +
+               $"\n<p><a href=\"{fname}\" class=\"transcript-download-link\" download>" +
+               "📄 Download full transcript</a></p>" +
+               "\n</section>";
+    }
+
+    // Embedded transcript — renders an inline collapsible section (used for local / self-contained pages).
+    private static string BuildTranscriptSectionEmbedded(string? transcriptPath, string videoId)
     {
         if (transcriptPath is null || !File.Exists(transcriptPath)) return string.Empty;
 
@@ -411,6 +429,8 @@ public static class PageGeneratorService
         .ts-line { font-size: .875rem; line-height: 1.55; color: var(--text); }
         .ts-link { color: var(--accent); text-decoration: none; font-family: "SF Mono", Consolas, monospace; font-size: .8rem; }
         .ts-link:hover { text-decoration: underline; }
+        .transcript-download-link { display: inline-flex; align-items: center; gap: 6px; padding: 8px 18px; background: rgba(88,166,255,.08); color: var(--accent); border: 1px solid rgba(88,166,255,.25); border-radius: 20px; font-size: 0.88rem; text-decoration: none; transition: background .2s; }
+        .transcript-download-link:hover { background: rgba(88,166,255,.2); }
         .lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.88); z-index: 2000; align-items: center; justify-content: center; cursor: zoom-out; }
         .lightbox.open { display: flex; }
         .lightbox-content { display: flex; flex-direction: column; align-items: center; gap: 12px; cursor: default; max-width: 92vw; }

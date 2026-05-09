@@ -54,6 +54,9 @@ public sealed class JobStatusDto
 
     [JsonPropertyName("publish_git_hub")]
     public bool PublishGitHub { get; init; }
+
+    [JsonPropertyName("github_folder")]
+    public string GithubFolder { get; init; } = "";
 }
 
 /// <summary>
@@ -81,6 +84,7 @@ public sealed class PodSlackerApiClient(HttpClient http)
     /// <param name="publishGitHub">When true, publish the finished page to GitHub Pages.</param>
     /// <param name="githubRepo">GitHub repository name to publish to.</param>
     /// <param name="githubTokenValue">Literal PAT; overrides server GITHUB_TOKEN env var when set.</param>
+    /// <param name="githubFolder">Optional subfolder in the gh-pages repo where files are published (e.g. "google-cloud-next").</param>
     /// <param name="ct">Cancellation token.</param>
     public async Task<string> SubmitJobAsync(
         string  videoUrl,
@@ -92,6 +96,7 @@ public sealed class PodSlackerApiClient(HttpClient http)
         bool    publishGitHub    = false,
         string  githubRepo       = "podslacker-pages",
         string? githubTokenValue = null,
+        string  githubFolder     = "",
         CancellationToken ct     = default)
     {
         var body = new
@@ -100,14 +105,15 @@ public sealed class PodSlackerApiClient(HttpClient http)
             config = new
             {
                 hosts,
-                host1_name       = host1Name,
-                host2_name       = host2Name,
-                num_frames       = numFrames,
-                llm_model        = llmModel,
-                llm_base_url     = "https://openrouter.ai/api/v1",
-                publish_github   = publishGitHub,
-                github_repo      = githubRepo,
+                host1_name         = host1Name,
+                host2_name         = host2Name,
+                num_frames         = numFrames,
+                llm_model          = llmModel,
+                llm_base_url       = "https://openrouter.ai/api/v1",
+                publish_github     = publishGitHub,
+                github_repo        = githubRepo,
                 github_token_value = githubTokenValue,
+                github_folder      = githubFolder,
             },
         };
         var response = await http.PostAsJsonAsync("api/jobs", body, JsonOptions, ct);

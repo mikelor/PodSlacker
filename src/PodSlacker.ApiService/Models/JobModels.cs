@@ -41,6 +41,8 @@ public sealed class JobRecord
     public int        NumFrames   { get; init; } = 6;
     /// <summary>Whether GitHub Pages publishing was requested.</summary>
     public bool       PublishGitHub { get; init; }
+    /// <summary>Optional subfolder in the gh-pages repo where files were published.</summary>
+    public string     GithubFolder  { get; init; } = "";
     /// <summary>Current pipeline status.</summary>
     public JobStatus  Status      { get; set; }  = JobStatus.Queued;
     /// <summary>Most recent progress message from the pipeline.</summary>
@@ -119,4 +121,6 @@ public sealed class JobStatusResponse
     public int        NumFrames     { get; init; } = 6;
     /// <summary>Whether GitHub Pages publishing was requested.</summary>
     public bool       PublishGitHub { get; init; }
+    /// <summary>Optional subfolder in the gh-pages repo where files were published.</summary>
+    public string     GithubFolder  { get; init; } = "";
 }

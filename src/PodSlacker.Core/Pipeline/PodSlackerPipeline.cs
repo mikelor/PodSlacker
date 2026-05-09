@@ -208,9 +208,29 @@ public sealed class PodSlackerPipeline(
                 var timestamps = await llmService.IdentifyKeyMomentsAsync(
                     kmClient, timedEntries, config.NumFrames, kmModel, videoUrl, kmPrompt, ct);
 
-                Report(PipelineStep.CapturingFrames, "Capturing frames…", 72);
                 string streamUrl = await metadataService.GetStreamUrlAsync(videoUrl, ct);
-                capturedFrames   = frameCaptureService.CaptureFrames(streamUrl, timestamps, outputDir, baseName);
+
+                // Per-frame callback: maps frame index into the 72–85 % band so the
+                // progress bar advances smoothly as each JPEG is saved.
+                const int framesStartPct = 72;
+                const int framesEndPct   = 85;
+                int       frameTotal     = timestamps.Count;
+                Report(PipelineStep.CapturingFrames,
+                    $"Capturing frames… (0 / {frameTotal})", framesStartPct);
+
+                var frameProgress = new Progress<(int current, int total)>(t =>
+                {
+                    int pct = t.total > 0
+                        ? framesStartPct + (t.current * (framesEndPct - framesStartPct) / t.total)
+                        : framesStartPct;
+                    progress?.Report(new PipelineProgress(
+                        PipelineStep.CapturingFrames,
+                        $"Capturing frames… ({t.current} / {t.total})",
+                        pct));
+                });
+
+                capturedFrames = frameCaptureService.CaptureFrames(
+                    streamUrl, timestamps, outputDir, baseName, frameProgress);
                 frameCaptions    = FrameCaptureService.GetFrameCaptions(
                     timedEntries, capturedFrames.Select(f => f.TimestampSeconds).ToList());
             }
@@ -258,6 +278,7 @@ public sealed class PodSlackerPipeline(
                 htmlPath, config.GithubRepo, config.GithubTokenEnv,
                 config.GithubBranch, config.GithubTokenValue,
                 pageAssets.Count > 0 ? pageAssets : null,
+                config.GithubFolder,
                 ct);
             logger.LogInformation("Published to: {Url}", ghPagesUrl);
         }
