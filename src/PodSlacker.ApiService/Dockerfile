@@ -1,10 +1,11 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 # Build context: src/   (run: docker build -f PodSlacker.ApiService/Dockerfile -t podslacker-api .)
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:11.0 AS build
 WORKDIR /src
 
 # Copy only project files first so the restore layer is cached as long as
 # dependencies don't change — the most expensive step is kept fast.
+COPY Directory.Build.props Directory.Packages.props ./
 COPY PodSlacker.Core/PodSlacker.Core.csproj                      PodSlacker.Core/
 COPY PodSlacker.ServiceDefaults/PodSlacker.ServiceDefaults.csproj PodSlacker.ServiceDefaults/
 COPY PodSlacker.ApiService/PodSlacker.ApiService.csproj           PodSlacker.ApiService/
@@ -22,7 +23,7 @@ RUN dotnet publish PodSlacker.ApiService/PodSlacker.ApiService.csproj \
     --no-restore
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS runtime
 WORKDIR /app
 
 # OpenCV native libraries required by OpenCvSharp4.runtime.ubuntu.22.04-x64.
