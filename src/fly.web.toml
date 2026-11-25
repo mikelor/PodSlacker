@@ -1,0 +1,64 @@
+# PodSlacker web UI (Blazor Server) on Fly.io.
+#
+# Lives in src/ because src/ is the Docker build context for both images.
+# Deploy from that folder:
+#   cd src
+#   fly deploy --config fly.web.toml --ha=false
+# or use scripts/fly-deploy.ps1 / the "Fly Deploy" GitHub workflow.
+
+app = "podslacker-web"
+primary_region = "dfw"
+
+[build]
+  dockerfile = "PodSlacker.Web/Dockerfile"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  # The API has no public ports; this private-network address is the only way
+  # to reach it. Plain [env] rather than a secret: it is a hostname, not a
+  # credential.
+  PODSLACKER_SERVICE_URL = "http://podslacker-api.internal:8080"
+
+# Persists DataProtection keys across machine restarts and deploys.
+# Without this, keys are lost on every restart, breaking antiforgery tokens
+# for anyone whose session spans a machine cycle.
+[[mounts]]
+  source      = "dp_keys"
+  destination = "/root/.aspnet/DataProtection-Keys"
+
+[deploy]
+  strategy     = "rolling"
+  wait_timeout = "5m"
+
+# Public website: https://podslacker-web.fly.dev
+# The web UI holds no job state (the API does), so it is safe to let it stop
+# when nobody is connected and start again on the next request.
+[http_service]
+  internal_port        = 8080
+  force_https          = true
+  auto_stop_machines   = "stop"
+  auto_start_machines  = true
+  min_machines_running = 0
+  processes            = ["app"]
+
+  # Blazor Server keeps one WebSocket open per browser tab, so count
+  # connections rather than requests.
+  [http_service.concurrency]
+    type       = "connections"
+    hard_limit = 50
+    soft_limit = 40
+
+  [[http_service.checks]]
+    interval     = "30s"
+    timeout      = "5s"
+    grace_period = "15s"
+    method       = "GET"
+    path         = "/health"
+    # Checks arrive over plain HTTP from inside Fly. Marking them as already
+    # HTTPS keeps the app's production HTTPS redirect from answering 307.
+    [http_service.checks.headers]
+      X-Forwarded-Proto = "https"
+
+[[vm]]
+  size   = "shared-cpu-1x"
+  memory = "512mb"

@@ -25,8 +25,10 @@ services:
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     volumes:
       # Persist the Kokoro ONNX model (~320 MB) across container restarts so it
-      # only needs to be downloaded once.
-      - kokoro-model:/app
+      # only needs to be downloaded once.  Mounted at /data (KOKORO_MODEL_DIR is
+      # /data/kokoro) rather than /app, so rebuilt images are never shadowed by
+      # stale binaries left in the volume.
+      - kokoro-model:/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]

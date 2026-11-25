@@ -1,0 +1,62 @@
+# PodSlacker API service on Fly.io.
+#
+# Lives in src/ because src/ is the Docker build context for both images.
+# Deploy from that folder:
+#   cd src
+#   fly deploy --config fly.api.toml --ha=false
+# or use scripts/fly-deploy.ps1 / the "Fly Deploy" GitHub workflow.
+
+app = "podslacker-api"
+primary_region = "dfw"
+
+[build]
+  dockerfile = "PodSlacker.ApiService/Dockerfile"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  # Where the ~320 MB Kokoro model is kept. Matches the volume mounted below so
+  # the model is downloaded once, not after every deploy or restart.
+  KOKORO_MODEL_DIR = "/data/kokoro"
+
+[deploy]
+  strategy     = "rolling"
+  wait_timeout = "5m"
+
+# There is deliberately NO [http_service] block.
+#
+# Without one the app gets no public ports and no Fly proxy in front of it, so
+# nothing on the internet can reach the API. The web UI calls it over Fly's
+# private network at http://podslacker-api.internal:8080 and that is the only
+# way in. To use the CLI's remote mode against it, open a tunnel:
+#   fly proxy 5100:8080 --app podslacker-api
+#   $env:PODSLACKER_SERVICE_URL = "http://localhost:5100"
+#
+# It also means this machine is always on, which is what the API needs: jobs
+# run in the background for minutes and are held in memory, and private-network
+# traffic neither keeps an auto-stopped machine awake nor wakes it up. An
+# auto-stopping API would kill jobs mid-pipeline.
+
+# With no [http_service] there are no service checks, so this is what tells a
+# rolling deploy that the new machine is actually serving.
+[checks]
+  [checks.health]
+    type         = "http"
+    port         = 8080
+    method       = "GET"
+    path         = "/health"
+    interval     = "15s"
+    timeout      = "5s"
+    grace_period = "30s"
+
+# Kokoro TTS (ONNX on CPU) and OpenCV frame capture both run in this process.
+# 2 GB is a starting point, not a measured figure: watch `fly logs` for OOM
+# kills on long videos and raise it if they appear. Shared CPUs are throttled
+# under sustained load, so audio synthesis will be slower than on a dev box;
+# a performance-2x machine is the next step up if that matters.
+[[vm]]
+  size   = "shared-cpu-2x"
+  memory = "2gb"
+
+[[mounts]]
+  source      = "podslacker_data"
+  destination = "/data"

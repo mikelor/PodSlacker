@@ -130,12 +130,18 @@ public sealed class KokoroTtsService(ILogger<KokoroTtsService> logger)
 
     /// <summary>
     /// Returns the path to the Kokoro ONNX model, downloading it the first time.
-    /// The model is stored in <see cref="AppContext.BaseDirectory"/> alongside the
-    /// executable so all future runs find it immediately.
+    /// The model is stored in the folder named by the <c>KOKORO_MODEL_DIR</c>
+    /// environment variable when it is set (use this to point at a persistent
+    /// volume in container deployments), otherwise in
+    /// <see cref="AppContext.BaseDirectory"/> alongside the executable.
     /// </summary>
     private async Task<string> EnsureModelAsync(CancellationToken ct)
     {
-        string modelPath = Path.Combine(AppContext.BaseDirectory, ModelFileName);
+        string modelDir = Environment.GetEnvironmentVariable("KOKORO_MODEL_DIR") is { Length: > 0 } dir
+            ? dir
+            : AppContext.BaseDirectory;
+        Directory.CreateDirectory(modelDir);
+        string modelPath = Path.Combine(modelDir, ModelFileName);
 
         if (File.Exists(modelPath))
         {

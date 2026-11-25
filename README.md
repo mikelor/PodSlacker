@@ -15,6 +15,7 @@ Built on **.NET 11 / C# 15** with no Python, no ffmpeg, and no yt-dlp required. 
 - **Any OpenAI-compatible LLM.** Works with OpenRouter, Ollama, Groq, Azure OpenAI, Together AI — or vanilla OpenAI. Each pipeline step can use a different provider.
 - **Three ways to run.** CLI locally, CLI pointing at a remote API service, or a full Blazor web UI — all sharing the same pipeline core.
 - **Aspire orchestration.** Start the API service, web UI, and dashboard in one command with .NET Aspire. No ports to manage.
+- **One-command cloud deploy.** A script and a GitHub workflow publish the API and web UI to [Fly.io](https://fly.io).
 - **Docker support.** Multi-stage Dockerfiles for both services and a `docker-compose.yml` for one-command local container runs. Cross-platform: OpenCvSharp runtime packages are selected automatically per OS.
 - **No yt-dlp dependency.** Transcripts, metadata, and video stream URLs are all resolved natively via [YoutubeExplode](https://github.com/Tyrrrz/YoutubeExplode).
 - **No ffmpeg dependency.** MP3 segments are concatenated as raw bytes; WAV files are written with a hand-written RIFF header.
@@ -24,9 +25,10 @@ Built on **.NET 11 / C# 15** with no Python, no ffmpeg, and no yt-dlp required. 
 
 ### Web UI features
 
+- **Batch submit.** Paste several YouTube URLs, one per line, and track them together on a batch page.
 - **Job history sidebar.** The home page shows all in-memory jobs in a live-polling sidebar — titles, status badges, progress, and direct links. Refreshes every 5 seconds automatically.
 - **LLM model selector.** Choose from a curated list of free OpenRouter models (Llama 3.3 70B, Gemini 2.0 Flash, DeepSeek R1, Mistral, Qwen, Phi-4, and more) directly in the submit form.
-- **Dialogue / Monologue toggle.** Switch between a two-host conversation and a solo narration before submitting.
+- **Dialogue / Monologue toggle.** Switch between a two-host conversation and a solo narration, and name the hosts, before submitting.
 - **Snapshot count slider.** Control how many key-moment screenshots are captured (0–12) from the submit form.
 - **Smart download filenames.** Completed SlackCasts download as `video_title_<jobid>.html` rather than a bare UUID.
 - **Live video title.** The video title appears on the job status page as soon as the pipeline fetches it — before any LLM steps begin.
@@ -39,12 +41,20 @@ Built on **.NET 11 / C# 15** with no Python, no ffmpeg, and no yt-dlp required. 
 
 ```
 PodSlacker/
+├── .env.example                  # Template for local settings — copy to .env (git-ignored)
 ├── docker-compose.yml            # Run API + Web as containers with one command
+├── .github/workflows/
+│   └── fly-deploy.yml            # Manual "Fly Deploy" workflow
+├── scripts/
+│   ├── Set-PodSlackerEnv.ps1     # Loads .env into your PowerShell session
+│   └── fly-deploy.ps1            # Creates, configures and deploys the Fly.io apps
 └── src/
     ├── PodSlacker.sln
     ├── Directory.Build.props     # Shared build settings (target framework, nullable, implicit usings)
     ├── Directory.Packages.props  # Central Package Management — all NuGet versions live here
     ├── .dockerignore             # Shared ignore rules for both Docker build contexts
+    ├── fly.api.toml              # Fly.io config for the API service
+    ├── fly.web.toml              # Fly.io config for the web UI
     ├── PodSlacker.Core/          # Pipeline logic, models, services — shared by all clients
     ├── PodSlacker.Cli/           # Command-line client (local or remote mode)
     ├── PodSlacker.ApiService/
@@ -61,20 +71,58 @@ PodSlacker/
 
 ## Quick Start
 
-**Prerequisites:** [.NET 11 SDK](https://dotnet.microsoft.com/download) and an LLM API key (see [LLM Providers](#llm-providers) — OpenRouter has a free tier).
+### What you need
 
-```bash
-# 1. Clone and build
-git clone https://github.com/your-username/PodSlacker.git
-cd PodSlacker/src
-dotnet build PodSlacker.sln -c Release
+| Requirement | Notes |
+|---|---|
+| [.NET 11 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) | The only thing to install for local runs |
+| An LLM API key | [OpenRouter](https://openrouter.ai/keys) has a free tier and is the default. Any OpenAI-compatible provider works — see [LLM Providers](#llm-providers) |
+| [Fly CLI](https://fly.io/docs/flyctl/install/) *(optional)* | Only for [publishing to Fly.io](#3-publish-to-flyio) |
 
-# 2. Set your LLM API key (OpenRouter used in podslacker.json by default)
-export OPENROUTER_API_KEY=sk-or-...
+Audio needs no key: Kokoro TTS runs locally and downloads its ~320 MB model once, on the first job.
 
-# 3. Run it — Kokoro TTS is the default, so no audio API key is needed
-dotnet run --project PodSlacker.Cli -c Release -- generate \
-  "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+### 1. Clone and add your key
+
+```powershell
+git clone https://github.com/mikelor/podslacker.git
+cd podslacker
+Copy-Item .env.example .env
+```
+
+Open `.env` and set `OPENROUTER_API_KEY`. The file is git-ignored, so the key never reaches GitHub. The other entries are optional — see [Settings](#settings).
+
+### 2. Run the web app with Aspire
+
+```powershell
+./scripts/Set-PodSlackerEnv.ps1
+dotnet run --project src/PodSlacker.AppHost
+```
+
+The first command loads `.env` into the current terminal; the second starts the API service, the web UI and the Aspire dashboard together. Then open:
+
+- **Web UI:** http://localhost:5200 — paste a YouTube URL and click **Generate Podcast**.
+- **Aspire dashboard:** use the `http://localhost:18888/login?t=...` link printed in the terminal for logs, traces and resource status.
+
+Run both commands in the same terminal: the AppHost passes the keys it finds in its own environment on to the API service. More detail is under [Running as a Web Service](#running-as-a-web-service).
+
+### 3. Publish to Fly.io
+
+With the [Fly CLI](https://fly.io/docs/flyctl/install/) installed and the same `.env` in place:
+
+```powershell
+fly auth login
+./scripts/fly-deploy.ps1 -Setup -Secrets -Deploy
+```
+
+That creates the two Fly apps and their volumes, pushes your keys as Fly secrets, builds the images on Fly, and deploys. When it finishes the site is at **https://podslacker-web.fly.dev**. Read [Deploying to Fly.io](#deploying-to-flyio) first: the web UI is public and has no login.
+
+### Or just use the CLI
+
+No web service needed — the CLI runs the whole pipeline in-process:
+
+```powershell
+./scripts/Set-PodSlackerEnv.ps1
+dotnet run --project src/PodSlacker.Cli -c Release -- generate "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 ```
 
 Files written to `outputs/`:
@@ -86,6 +134,21 @@ Files written to `outputs/`:
 | `*_podcast.wav` | Stitched audio (Kokoro) or `*_podcast.mp3` (OpenAI TTS) |
 | `*_frame_01.jpg` … | Key-moment screenshots (6 by default) |
 | `*_page.html` | Self-contained page with summary, gallery, and audio player |
+
+The remaining CLI examples in this README use bash syntax and are run from the `src/` folder.
+
+### Settings
+
+Every setting is an environment variable. For local runs put them in `.env` and load them with `./scripts/Set-PodSlackerEnv.ps1` (add `-Persist` to save them to your Windows user profile). On macOS or Linux, `set -a; source .env; set +a` does the same job.
+
+| Variable | Needed? | Purpose |
+|---|---|---|
+| `OPENROUTER_API_KEY` | **Required** (default setup) | LLM key for the summary, script and key-moment steps |
+| `OPENAI_API_KEY` | Only for OpenAI | Needed when using OpenAI TTS or OpenAI as the LLM provider |
+| `GITHUB_TOKEN` | Only for publishing | PAT with `repo` + `pages` scopes, used by "Publish to GitHub Pages" when no token is typed into the form |
+| `YOUTUBE_API_KEY` | No | Overrides the built-in key used by a transcript fallback |
+| `PODSLACKER_API_KEY` | No | Requires an `X-Api-Key` header on the API service. Leave unset for local development |
+| `PODSLACKER_SERVICE_URL` | Leave unset with Aspire | Points the CLI or web UI at a running API service. Aspire wires this up itself |
 
 ### Want a fully free, fully local run?
 
@@ -120,29 +183,37 @@ PodSlacker can run as a persistent REST API that accepts jobs from either the CL
 
 ### Option A — .NET Aspire (recommended for development)
 
-Aspire starts the API service and the web UI together, assigns ports automatically, and opens a dashboard showing live logs, traces, and resource status.
+Aspire starts the API service and the web UI together and opens a dashboard showing live logs, traces, and resource status.
 
-```bash
+```powershell
+./scripts/Set-PodSlackerEnv.ps1
 dotnet run --project src/PodSlacker.AppHost
 ```
 
-The Aspire dashboard opens at **http://localhost:18888**. The web UI URL is shown in the dashboard under `podslacker-web` — click it to open the browser interface where you can paste a YouTube URL and track the job in real time.
+- The **web UI** is at http://localhost:5200.
+- The **Aspire dashboard** is at http://localhost:18888. It asks for a token; the terminal prints a ready-made `login?t=...` link.
+- The **API service** gets a dynamic port, shown in the dashboard under `podslacker-api`.
 
-> **Note:** Do not set `PODSLACKER_SERVICE_URL` when using Aspire. The AppHost clears it automatically and wires the web UI to the API via service discovery.
+Things to know:
+
+- **Keys come from the AppHost's environment.** `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `YOUTUBE_API_KEY` and `GITHUB_TOKEN` are read when the AppHost starts and passed to the API service, so load `.env` first and restart the AppHost after changing a key.
+- **Do not set `PODSLACKER_SERVICE_URL`.** The AppHost clears it and wires the web UI to the API through service discovery.
+- **Use a normal Debug run.** `dotnet run` hands off to the Aspire CLI, which builds and launches the Debug configuration; `-c Release --no-build` fails to find the executable.
+- **Missing key?** The API logs a warning at startup for each key that is not set, and jobs fail at the summary step with a 401.
 
 ### Option B — Manual startup
 
 Start the API service first, then point the CLI or web UI at it.
 
 ```bash
-# Terminal 1 — start the API
+# Terminal 1 — start the API on a fixed port
 export OPENROUTER_API_KEY=sk-or-...
 export PODSLACKER_API_KEY=my-secret   # optional — enables X-Api-Key auth
 # export YOUTUBE_API_KEY=AIza...      # optional — only needed if the default key stops working
-dotnet run --project src/PodSlacker.ApiService
+dotnet run --project src/PodSlacker.ApiService -- --urls http://localhost:5100
 
 # Terminal 2 — use the CLI in remote mode
-export PODSLACKER_SERVICE_URL=http://localhost:5100   # use the HTTP port shown at startup
+export PODSLACKER_SERVICE_URL=http://localhost:5100
 export PODSLACKER_API_KEY=my-secret                   # must match the server's value if set
 dotnet run --project src/PodSlacker.Cli -- generate \
   "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
@@ -160,6 +231,7 @@ dotnet run --project src/PodSlacker.Web
 | `GET` | `/api/jobs` | List all in-memory jobs, newest first |
 | `GET` | `/api/jobs/{id}` | Poll job status (Queued / Running / Completed / Failed) |
 | `GET` | `/api/jobs/{id}/page` | Download the generated HTML page once completed |
+| `GET` | `/api/github-folders` | List top-level folders on the GitHub Pages branch (`repo`, `branch`, `token` query parameters) |
 | `GET` | `/health` | Health check (no auth required) |
 | `GET` | `/alive` | Liveness check (no auth required) |
 
@@ -180,12 +252,13 @@ Set `PODSLACKER_API_KEY` on the API service to require an `X-Api-Key` header on 
     "tts_engine": "kokoro",
     "publish_github": true,
     "github_repo": "podslacker-pages",
+    "github_folder": "google-cloud-next",
     "github_token_value": "ghp_..."
   }
 }
 ```
 
-All `config` fields are optional — omitted fields use the server's compiled defaults. The server always overrides `output_dir` (uses a temp directory) and ignores `publish_github`.
+All `config` fields are optional — omitted fields use the server's compiled defaults. The server always overrides `output_dir` (it uses a temp directory). `publish_github` is honoured: the job publishes with `github_token_value` if supplied, otherwise with the server's `GITHUB_TOKEN`. `github_folder` places the published files in a subfolder of the Pages branch.
 
 #### GET /api/jobs/{id} response
 
@@ -211,15 +284,17 @@ The download filename for `/api/jobs/{id}/page` is derived from the video title 
 
 ## Web UI Walkthrough
 
-Once the Aspire host or Docker Compose stack is running, open the web UI (default `http://localhost:5200`) in any browser.
+Once the Aspire host or Docker Compose stack is running, open the web UI (`http://localhost:5200` in both cases) in any browser.
 
 ### Submit form
 
 The home page is split into two columns: the submit form on the left and a live job history sidebar on the right.
 
-**YouTube URL** — paste any YouTube link and press Enter or click **🎙️ Generate Podcast**.
+**YouTube URL(s)** — paste one YouTube link, or several with one per line, and click **🎙️ Generate Podcast**. A single URL opens that job's status page; several URLs open a batch page that tracks them all, refreshing every 5 seconds.
 
-**Format** — choose between *🎭 Dialogue* (Alex & Jordan, two voices) or *🎤 Monologue* (Alex solo). Maps to `hosts: 2` and `hosts: 1` in the config.
+**Format** — choose between *🎭 Dialogue* (two hosts, two voices) or *🎤 Monologue* (one host). Maps to `hosts: 2` and `hosts: 1` in the config.
+
+**Host names** — default to JORDAN and MIKE; change them to rename the speakers in the script.
 
 **AI Model** — select the LLM used for summarisation and script generation. All options are free via OpenRouter:
 
@@ -244,6 +319,8 @@ The sidebar polls `GET /api/jobs` every 5 seconds and shows all in-memory jobs w
 Check **Publish to GitHub Pages** in the submit form to automatically push the finished SlackCast to a public GitHub Pages site when the pipeline completes.
 
 **Repository name** — defaults to `podslacker-pages`. The repository is created automatically if it doesn't exist.
+
+**Folder** — optionally publish into a subfolder of the Pages branch. The list shows the folders already there; choose **＋ New folder…** to create one.
 
 **Personal Access Token** — paste a GitHub PAT with `repo` and `pages` scopes directly into the form. This overrides any `GITHUB_TOKEN` set on the server, so you can publish to different accounts without restarting the service. Leave the field blank to use the server's `GITHUB_TOKEN` environment variable instead. [Create a token ↗](https://github.com/settings/tokens)
 
@@ -280,9 +357,8 @@ The downloaded HTML file is fully self-contained (audio and images are base64-em
 Docker Compose is the quickest way to run both services as containers without installing the .NET SDK.
 
 ```bash
-# 1. Create a .env file next to docker-compose.yml with your API keys
-echo "OPENROUTER_API_KEY=sk-or-..."  >> .env
-echo "PODSLACKER_API_KEY=my-secret" >> .env   # optional auth
+# 1. Create a .env file next to docker-compose.yml and fill in your API keys
+cp .env.example .env
 
 # 2. Build and start both services
 docker compose up --build
@@ -292,6 +368,8 @@ docker compose up --build
 ```
 
 `docker compose down` stops the containers but preserves the `kokoro-model` volume so the 320 MB ONNX model doesn't need to re-download. Add `--volumes` to remove it too.
+
+> **Upgrading from an older checkout?** The volume used to be mounted at `/app`, which also captured the application binaries. Run `docker compose down --volumes` once so a stale volume is not reused.
 
 ### Building images individually
 
@@ -317,6 +395,7 @@ docker build -f PodSlacker.Web/Dockerfile -t podslacker-web .
 | `PODSLACKER_SERVICE_URL` | Web | Set automatically by Docker Compose to `http://podslacker-api:8080` |
 | `YOUTUBE_API_KEY` | API | YouTube internal WEB client key used by transcript fallback Tier 3. A safe public default is compiled in; only set this if the default stops working. |
 | `GITHUB_TOKEN` | API | GitHub Personal Access Token with `repo` + `pages` scopes. Used as a server-wide fallback when "Publish to GitHub Pages" is enabled but no token is entered in the web form. [Create one ↗](https://github.com/settings/tokens) |
+| `KOKORO_MODEL_DIR` | API | Folder where the Kokoro model is stored. The Docker image sets it to `/data/kokoro`; Docker Compose and Fly mount a volume at `/data`. When unset (local runs) the model sits next to the executable. |
 | `ASPNETCORE_ENVIRONMENT` | Both | Defaults to `Development`; set to `Production` for hardened deployments |
 
 ### OpenCV cross-platform support
@@ -330,7 +409,68 @@ docker build -f PodSlacker.Web/Dockerfile -t podslacker-web .
 | macOS Apple Silicon | `OpenCvSharp4.runtime.osx-arm64` |
 | macOS Intel | `OpenCvSharp4.runtime.osx-x64` |
 
+> **macOS caveat:** the two macOS package IDs above could not be found on nuget.org when the packages were last updated (November 2026), so restore may fail on a Mac. Windows and Linux are unaffected.
+
 The Linux image also installs the required system libraries (`libglib2.0-0`, `libgtk2.0-0`, `libavcodec-extra`, etc.) via `apt-get` in the Dockerfile's runtime stage.
+
+---
+
+## Deploying to Fly.io
+
+PodSlacker runs on [Fly.io](https://fly.io) as two apps:
+
+| App | Config | Exposure | Machine |
+|---|---|---|---|
+| `podslacker-api` | `src/fly.api.toml` | Private: no public ports, reachable only at `podslacker-api.internal:8080` | Always on, 2 GB, with a 1 GB volume for the Kokoro model |
+| `podslacker-web` | `src/fly.web.toml` | Public: `https://podslacker-web.fly.dev` | Stops when idle, starts on the next request |
+
+The API is always on because jobs run in the background and are held in memory; an auto-stopping machine would kill them mid-pipeline.
+
+### First deploy
+
+Prerequisites: a Fly.io account, the [Fly CLI](https://fly.io/docs/flyctl/install/), and a `.env` file in the repo root with at least `OPENROUTER_API_KEY` (copy `.env.example`). Docker is not needed; images are built on Fly.
+
+```powershell
+fly auth login
+./scripts/fly-deploy.ps1 -Setup -Secrets -Deploy
+```
+
+When it finishes, open https://podslacker-web.fly.dev. The first request may take a few seconds while the web machine starts, and the first job downloads the Kokoro model to the API's volume.
+
+`-Setup` creates the apps and volumes if they are missing, `-Secrets` pushes values from `.env` to Fly over stdin, and `-Deploy` builds on Fly's remote builders and releases the API, then the web UI. Each switch can be run on its own and is safe to repeat:
+
+```powershell
+./scripts/fly-deploy.ps1 -Deploy             # redeploy both apps
+./scripts/fly-deploy.ps1 -Deploy -App web    # just the web UI
+./scripts/fly-deploy.ps1 -Secrets            # after rotating a key in .env
+```
+
+### Secrets
+
+| Secret | Set on | Notes |
+|---|---|---|
+| `OPENROUTER_API_KEY` | API | Required |
+| `OPENAI_API_KEY` | API | Only for OpenAI TTS or LLM |
+| `YOUTUBE_API_KEY` | API | Optional override |
+| `PODSLACKER_API_KEY` | API + Web | Optional; must match on both. The API is already private, so this only guards against other apps in the same Fly organisation. |
+| `GITHUB_TOKEN` | API | **Not pushed by default.** The web UI has no login, so a server-side token lets any visitor publish to your GitHub Pages. Pass `-IncludeGitHubToken` only if the site is otherwise protected. |
+
+### Deploying from GitHub Actions
+
+The **Fly Deploy** workflow (`.github/workflows/fly-deploy.yml`) is manual-trigger: run it from the Actions tab and choose `both`, `api`, or `web`. It needs one repository secret:
+
+```powershell
+fly tokens create org --name podslacker-github    # copy the token it prints
+gh secret set FLY_API_TOKEN                        # paste it when prompted
+```
+
+### Things to know
+
+- **The web UI is public and unauthenticated.** Anyone with the URL can submit jobs, which spend your LLM credits and CPU time.
+- **Deploying the API drops in-flight jobs.** Its single machine restarts and the job list is in memory.
+- **CLI remote mode** needs a tunnel, since the API has no public address: `fly proxy 5100:8080 --app podslacker-api`, then set `PODSLACKER_SERVICE_URL=http://localhost:5100`.
+- **Useful commands:** `fly logs --app podslacker-api`, `fly status --app podslacker-web`, `fly secrets list --app podslacker-api`.
+- **App names are global on Fly.** If `podslacker-api` or `podslacker-web` is taken, change `app` in both `fly.*.toml` files, the `.internal` hostname in `fly.web.toml`, and the names in `scripts/fly-deploy.ps1`.
 
 ---
 
@@ -364,19 +504,9 @@ brew install --cask devtunnel
 devtunnel user login
 ```
 
-### 2. Fix the Web port (recommended)
+### 2. Check the Web port
 
-Aspire assigns a new port every run, which means you'd have to re-point the tunnel each time. Avoid that by pinning the Web UI to a fixed port in `AppHost/Program.cs`:
-
-```csharp
-builder
-    .AddDotnetProject("podslacker-web", "../PodSlacker.Web/PodSlacker.Web.csproj")
-    .WithReference(apiService)
-    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
-    .WithEnvironment("PODSLACKER_SERVICE_URL", "")
-    .WithHttpEndpoint(port: 5200, name: "http")   // fixed port — tunnel target never changes
-    .WithExternalHttpEndpoints();
-```
+The web UI listens on port **5200** on every run (set in `PodSlacker.Web/Properties/launchSettings.json`), so the tunnel target never changes. To use a different port, change `applicationUrl` there.
 
 ### 3. Start your services
 
@@ -421,17 +551,6 @@ The CLI submits the job, polls every 5 seconds printing progress, then downloads
 
 ---
 
-## Prerequisites
-
-| Requirement | Version | Notes |
-|---|---|---|
-| [.NET 11 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) | 11.0 or later | The only system-level dependency |
-| LLM API key | — | OpenRouter, OpenAI, or any compatible provider |
-| OpenAI API key *(optional)* | — | Only needed when `--tts-engine openai` |
-| [Kokoro ONNX model](https://github.com/taylorchu/kokoro-onnx) (~320 MB) | auto-downloaded | Downloaded once on first Kokoro TTS run |
-
----
-
 ## Building
 
 ```bash
@@ -464,8 +583,8 @@ dotnet publish PodSlacker.Cli -c Release -r osx-arm64 --self-contained true -p:P
 
   "output_dir": "outputs",
   "hosts": 2,
-  "host1_name": "MIKE",
-  "host2_name": "JORDAN",
+  "host1_name": "JORDAN",
+  "host2_name": "MIKE",
   "num_frames": 6,
 
   "_llm": "Use any OpenAI-compatible endpoint",
@@ -475,8 +594,8 @@ dotnet publish PodSlacker.Cli -c Release -r osx-arm64 --self-contained true -p:P
 
   "_tts": "kokoro = local, free. openai = cloud, requires API key.",
   "tts_engine": "kokoro",
-  "voice_host1": "am_michael",
-  "voice_host2": "af_heart",
+  "voice_host1": "af_heart",
+  "voice_host2": "am_michael",
   "tts_model": "tts-1",
   "tts_api_key_env": "OPENAI_API_KEY",
 
@@ -490,9 +609,13 @@ dotnet publish PodSlacker.Cli -c Release -r osx-arm64 --self-contained true -p:P
   "publish_github": false,
   "github_repo": "podslacker-pages",
   "github_token_env": "GITHUB_TOKEN",
-  "github_branch": "gh-pages"
+  "github_branch": "gh-pages",
+  "github_folder": "",
+  "github_embed_assets": false
 }
 ```
+
+`github_folder` publishes into a subfolder of the Pages branch. `github_embed_assets` controls how published pages carry their media: `false` (default) uploads audio and images as separate files next to a small HTML page, `true` base64-embeds them into one large file. Both are config-file settings; there is no CLI flag for them.
 
 Use `--config /path/to/custom.json` to load a different file.
 
@@ -511,8 +634,8 @@ podslacker generate <url> [options]
 | `--output-dir, -o DIR` | `outputs` | Directory for all generated files (local mode only) |
 | `--output-file FILE` | `podslacker_<id>.html` | Where to save the HTML in remote mode |
 | `--hosts {1,2}` | `2` | `1` = solo monologue, `2` = two-host dialogue |
-| `--host1-name NAME` | `MIKE` | Name for the first (or only) host |
-| `--host2-name NAME` | `JORDAN` | Name for the second host |
+| `--host1-name NAME` | `JORDAN` | Name for the first (or only) host |
+| `--host2-name NAME` | `MIKE` | Name for the second host |
 | `--no-audio` | off | Skip TTS synthesis |
 | `--no-page` | off | Skip HTML page generation |
 | `--reuse-summary` | off | Skip LLM calls if `*_summary.md` already exists |
@@ -550,15 +673,15 @@ The same two flags work for both engines — just use the right voice name for w
 
 | Flag | Default | Description |
 |---|---|---|
-| `--voice-host1 VOICE` | `am_michael` | Voice for host 1 (Kokoro or OpenAI name) |
-| `--voice-host2 VOICE` | `af_heart` | Voice for host 2 (Kokoro or OpenAI name) |
+| `--voice-host1 VOICE` | `af_heart` | Voice for host 1 (Kokoro or OpenAI name) |
+| `--voice-host2 VOICE` | `am_michael` | Voice for host 2 (Kokoro or OpenAI name) |
 
-Voices used in the default config:
+Defaults come from the `podslacker.json` that ships next to the CLI. Example voices per engine:
 
 | Engine | Host | Voice | Style |
 |---|---|---|---|
-| Kokoro | Host 1 | `am_michael` | American English male |
-| Kokoro | Host 2 | `af_heart` | American English female |
+| Kokoro | Host 1 | `af_heart` | American English female |
+| Kokoro | Host 2 | `am_michael` | American English male |
 | OpenAI | Host 1 | `onyx` | Deep, authoritative male |
 | OpenAI | Host 2 | `nova` | Warm, conversational female |
 
@@ -762,11 +885,11 @@ When running locally (no `PODSLACKER_SERVICE_URL`), the CLI calls `PodSlacker.Co
 
 **No ffmpeg.** MP3 is a frame-based format; segments concatenate cleanly as raw bytes. WAV files for Kokoro are written with a hand-crafted 44-byte RIFF/WAVE PCM header — no audio library required.
 
-**Kokoro model management.** The 320 MB `kokoro.onnx` model is downloaded once to `AppContext.BaseDirectory` via a streamed HTTP download with 10%-bucket progress logging, using an atomic `.download → rename` pattern so a cancelled download never leaves a corrupt file.
+**Kokoro model management.** The 320 MB `kokoro.onnx` model is downloaded once to `KOKORO_MODEL_DIR` (or `AppContext.BaseDirectory` when that is unset) via a streamed HTTP download with 10%-bucket progress logging, using an atomic `.download → rename` pattern so a cancelled download never leaves a corrupt file.
 
 **Embedded prompts.** All four system prompts are embedded resources in `PodSlacker.Core.dll`, so the CLI, the web API, and any future clients share the same canonical prompts with no file-copying during deployment.
 
-**NuGet-based Aspire (no workload).** `PodSlacker.AppHost` uses `Aspire.Hosting.AppHost` and the platform-specific DCP/Dashboard NuGet packages directly, avoiding the deprecated `IsAspireHost` workload property that triggers `NETSDK1228` on .NET 10 and later.
+**NuGet-based Aspire (no workload).** `PodSlacker.AppHost` uses `Aspire.Hosting.AppHost`, `Aspire.Hosting.Dotnet` and the platform-specific DCP/Dashboard NuGet packages directly, avoiding the deprecated `IsAspireHost` workload property that triggers `NETSDK1228` on .NET 10 and later.
 
 ---
 

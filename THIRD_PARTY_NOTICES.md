@@ -185,7 +185,8 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 - **License:** MIT
 - **Source:** https://github.com/dotnet/aspire
 - **Packages:**
-  - `Aspire.Hosting.AppHost` — core orchestration APIs (`DistributedApplication`, `AddProject`, `WithReference`)
+  - `Aspire.Hosting.AppHost` — core orchestration APIs (`DistributedApplication`, `WithReference`)
+  - `Aspire.Hosting.Dotnet` — `AddDotnetProject`, which registers the API and web projects as resources
   - `Aspire.Hosting.Orchestration.{win-x64,osx-arm64,osx-x64,linux-x64}` — DCP (Developer Control Plane) binary that launches and supervises the orchestrated processes; platform-specific package selected at build time
   - `Aspire.Dashboard.Sdk.{win-x64,osx-arm64,osx-x64,linux-x64}` — self-contained Aspire Dashboard web app that displays traces, logs, and resource status; platform-specific package selected at build time
 - **Use:** `PodSlacker.AppHost` uses these packages to start `PodSlacker.ApiService` and `PodSlacker.Web` together in development, wire service discovery between them, and open the Aspire Dashboard
