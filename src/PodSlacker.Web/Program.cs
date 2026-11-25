@@ -17,7 +17,7 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
     // Trust all proxies — fine for Dev Tunnels and single-hop Azure ingress.
     // Restrict to specific proxy IPs in a hardened multi-hop production setup.
-    options.KnownIPNetworks.Clear();  // .NET 10: replaces the obsolete KnownNetworks
+    options.KnownIPNetworks.Clear();  // .NET 10+: replaces the obsolete KnownNetworks
     options.KnownProxies.Clear();
 });
 

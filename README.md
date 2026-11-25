@@ -4,13 +4,13 @@
 
 PodSlacker fetches a video's transcript, uses an LLM to write a structured summary and a podcast script, synthesises audio via text-to-speech, captures key-moment screenshots, and packages everything into a self-contained HTML page. Optionally publishes to GitHub Pages.
 
-Built on **.NET 10 / C# 14** with no Python, no ffmpeg, and no yt-dlp required. Kokoro local TTS is the default — **no API key needed for audio**.
+Built on **.NET 11 / C# 15** with no Python, no ffmpeg, and no yt-dlp required. Kokoro local TTS is the default — **no API key needed for audio**.
 
 ---
 
 ## Features
 
-- **No extra runtimes.** Pure .NET 10 — install the SDK and you're done.
+- **No extra runtimes.** Pure .NET 11 — install the SDK and you're done.
 - **Local TTS by default.** [Kokoro](https://github.com/thewh1teagle/kokoro-onnx) runs on CPU, produces high-quality 24 kHz WAV, and requires no API key. Switch to OpenAI TTS with one flag.
 - **Any OpenAI-compatible LLM.** Works with OpenRouter, Ollama, Groq, Azure OpenAI, Together AI — or vanilla OpenAI. Each pipeline step can use a different provider.
 - **Three ways to run.** CLI locally, CLI pointing at a remote API service, or a full Blazor web UI — all sharing the same pipeline core.
@@ -42,6 +42,8 @@ PodSlacker/
 ├── docker-compose.yml            # Run API + Web as containers with one command
 └── src/
     ├── PodSlacker.sln
+    ├── Directory.Build.props     # Shared build settings (target framework, nullable, implicit usings)
+    ├── Directory.Packages.props  # Central Package Management — all NuGet versions live here
     ├── .dockerignore             # Shared ignore rules for both Docker build contexts
     ├── PodSlacker.Core/          # Pipeline logic, models, services — shared by all clients
     ├── PodSlacker.Cli/           # Command-line client (local or remote mode)
@@ -59,7 +61,7 @@ PodSlacker/
 
 ## Quick Start
 
-**Prerequisites:** [.NET 10 SDK](https://dotnet.microsoft.com/download) and an LLM API key (see [LLM Providers](#llm-providers) — OpenRouter has a free tier).
+**Prerequisites:** [.NET 11 SDK](https://dotnet.microsoft.com/download) and an LLM API key (see [LLM Providers](#llm-providers) — OpenRouter has a free tier).
 
 ```bash
 # 1. Clone and build
@@ -324,7 +326,7 @@ docker build -f PodSlacker.Web/Dockerfile -t podslacker-web .
 | Platform | Package |
 |---|---|
 | Windows | `OpenCvSharp4.runtime.win` |
-| Linux (Ubuntu 22.04) | `OpenCvSharp4.runtime.ubuntu.22.04-x64` |
+| Linux x64 | `OpenCvSharp4.official.runtime.linux-x64` |
 | macOS Apple Silicon | `OpenCvSharp4.runtime.osx-arm64` |
 | macOS Intel | `OpenCvSharp4.runtime.osx-x64` |
 
@@ -368,7 +370,7 @@ Aspire assigns a new port every run, which means you'd have to re-point the tunn
 
 ```csharp
 builder
-    .AddProject<Projects.PodSlacker_Web>("podslacker-web")
+    .AddDotnetProject("podslacker-web", "../PodSlacker.Web/PodSlacker.Web.csproj")
     .WithReference(apiService)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     .WithEnvironment("PODSLACKER_SERVICE_URL", "")
@@ -423,7 +425,7 @@ The CLI submits the job, polls every 5 seconds printing progress, then downloads
 
 | Requirement | Version | Notes |
 |---|---|---|
-| [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | 10.0 or later | The only system-level dependency |
+| [.NET 11 SDK](https://dotnet.microsoft.com/download/dotnet/11.0) | 11.0 or later | The only system-level dependency |
 | LLM API key | — | OpenRouter, OpenAI, or any compatible provider |
 | OpenAI API key *(optional)* | — | Only needed when `--tts-engine openai` |
 | [Kokoro ONNX model](https://github.com/taylorchu/kokoro-onnx) (~320 MB) | auto-downloaded | Downloaded once on first Kokoro TTS run |
@@ -764,7 +766,7 @@ When running locally (no `PODSLACKER_SERVICE_URL`), the CLI calls `PodSlacker.Co
 
 **Embedded prompts.** All four system prompts are embedded resources in `PodSlacker.Core.dll`, so the CLI, the web API, and any future clients share the same canonical prompts with no file-copying during deployment.
 
-**NuGet-based Aspire (no workload).** `PodSlacker.AppHost` uses `Aspire.Hosting.AppHost` and the platform-specific DCP/Dashboard NuGet packages directly, avoiding the deprecated `IsAspireHost` workload property that triggers `NETSDK1228` on .NET 10.
+**NuGet-based Aspire (no workload).** `PodSlacker.AppHost` uses `Aspire.Hosting.AppHost` and the platform-specific DCP/Dashboard NuGet packages directly, avoiding the deprecated `IsAspireHost` workload property that triggers `NETSDK1228` on .NET 10 and later.
 
 ---
 

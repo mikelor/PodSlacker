@@ -23,7 +23,7 @@ static string? Env(string name) => Environment.GetEnvironmentVariable(name);
 // ── API service ───────────────────────────────────────────────────────────────
 
 var apiService = builder
-    .AddProject<Projects.PodSlacker_ApiService>("podslacker-api")
+    .AddDotnetProject("podslacker-api", "../PodSlacker.ApiService/PodSlacker.ApiService.csproj")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     // LLM (OpenRouter by default; swap for OPENAI_API_KEY if using OpenAI direct)
     .WithEnvironment("OPENROUTER_API_KEY",  Env("OPENROUTER_API_KEY")  ?? "")
@@ -39,7 +39,7 @@ var apiService = builder
 // The web app resolves "http://podslacker-api" to the actual endpoint at runtime.
 
 builder
-    .AddProject<Projects.PodSlacker_Web>("podslacker-web")
+    .AddDotnetProject("podslacker-web", "../PodSlacker.Web/PodSlacker.Web.csproj")
     .WithReference(apiService)
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development")
     // Clear any manually-set service URL so Aspire's service discovery

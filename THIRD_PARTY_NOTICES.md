@@ -7,7 +7,7 @@ PodSlacker incorporates components from the following open-source projects. Each
 ## .NET / C# Dependencies
 
 ### System.CommandLine
-- **Version:** 2.0.7
+- **Version:** 3.0.0
 - **Author:** .NET Foundation and contributors
 - **License:** MIT
 - **Source:** https://github.com/dotnet/command-line-api
@@ -22,7 +22,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 ---
 
 ### Microsoft.Extensions.AI / Microsoft.Extensions.AI.OpenAI
-- **Version:** 10.5.1
+- **Version:** 11.0.1
 - **Author:** Microsoft
 - **License:** MIT
 - **Source:** https://github.com/dotnet/extensions
@@ -31,7 +31,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 ---
 
 ### Microsoft.Extensions.DependencyInjection / Hosting / Logging / Configuration / Options
-- **Version:** 10.0.7
+- **Version:** 11.0.0
 - **Author:** Microsoft
 - **License:** MIT
 - **Source:** https://github.com/dotnet/runtime
@@ -40,7 +40,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 ---
 
 ### OpenAI (.NET SDK)
-- **Version:** 2.10.0
+- **Version:** 2.15.0
 - **Author:** Microsoft and OpenAI contributors
 - **License:** MIT
 - **Source:** https://github.com/openai/openai-dotnet
@@ -49,7 +49,7 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 ---
 
 ### Markdig
-- **Version:** 1.1.3
+- **Version:** 1.6.0
 - **Author:** Alexandre Mutel (xoofx)
 - **License:** BSD 2-Clause
 - **Source:** https://github.com/xoofx/markdig
@@ -69,12 +69,12 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 ---
 
 ### OpenCvSharp4 / OpenCvSharp4 platform runtime packages
-- **Version:** 4.13.0.20260427 / 4.13.0.20260302
+- **Version:** 4.13.0.20261107
 - **Author:** shimat
 - **License:** Apache License 2.0 (binding); Apache License 2.0 (OpenCV itself)
 - **Source:** https://github.com/shimat/opencvsharp
 - **Use:** Seeks to timestamps in a remote video stream and captures JPEG frames for the HTML page gallery
-- **Packages:** `OpenCvSharp4`, `OpenCvSharp4.runtime.win`, `OpenCvSharp4.runtime.ubuntu.22.04-x64`, `OpenCvSharp4.runtime.osx-arm64`, `OpenCvSharp4.runtime.osx-x64` (platform-specific native binaries selected at build time via MSBuild conditions)
+- **Packages:** `OpenCvSharp4`, `OpenCvSharp4.runtime.win`, `OpenCvSharp4.official.runtime.linux-x64`, `OpenCvSharp4.runtime.osx-arm64`, `OpenCvSharp4.runtime.osx-x64` (platform-specific native binaries selected at build time via MSBuild conditions)
 
 ```
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,7 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### YoutubeExplode
-- **Version:** 6.6.0
+- **Version:** 6.6.3
 - **Author:** Oleksii Holub (Tyrrrz)
 - **License:** GNU Lesser General Public License v3.0 (LGPL-3.0)
 - **Source:** https://github.com/Tyrrrz/YoutubeExplode
@@ -96,7 +96,7 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### KokoroSharp / KokoroSharp.CPU
-- **Version:** 0.6.7
+- **Version:** 0.8.5
 - **Author:** thewh1teagle
 - **License:** MIT
 - **Source:** https://github.com/thewh1teagle/kokoro-onnx
@@ -132,7 +132,7 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### Microsoft.AspNetCore.OpenApi
-- **Version:** 10.0.7
+- **Version:** 11.0.0
 - **Author:** Microsoft
 - **License:** MIT
 - **Source:** https://github.com/dotnet/aspnetcore
@@ -141,7 +141,7 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### Microsoft.Extensions.Http.Resilience
-- **Version:** 10.5.0
+- **Version:** 11.0.1
 - **Author:** Microsoft
 - **License:** MIT
 - **Source:** https://github.com/dotnet/extensions
@@ -150,7 +150,7 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### Microsoft.Extensions.ServiceDiscovery
-- **Version:** 10.5.0
+- **Version:** 11.0.1
 - **Author:** Microsoft
 - **License:** MIT
 - **Source:** https://github.com/dotnet/extensions
@@ -159,16 +159,16 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### OpenTelemetry for .NET
-- **Versions:** 1.15.x (see individual packages below)
+- **Versions:** 1.21.x (see individual packages below)
 - **Author:** OpenTelemetry Authors
 - **License:** Apache License 2.0
 - **Source:** https://github.com/open-telemetry/opentelemetry-dotnet
 - **Packages:**
-  - `OpenTelemetry.Extensions.Hosting` 1.15.3 — integrates OTel with the .NET generic host lifetime
-  - `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.15.3 — exports traces, metrics, and logs via OTLP to the Aspire Dashboard
-  - `OpenTelemetry.Instrumentation.AspNetCore` 1.15.2 — automatic tracing for ASP.NET Core request handling
-  - `OpenTelemetry.Instrumentation.Http` 1.15.1 — automatic tracing for outbound `HttpClient` calls
-  - `OpenTelemetry.Instrumentation.Runtime` 1.15.1 — .NET runtime metrics (GC, thread pool, etc.)
+  - `OpenTelemetry.Extensions.Hosting` 1.21.0 — integrates OTel with the .NET generic host lifetime
+  - `OpenTelemetry.Exporter.OpenTelemetryProtocol` 1.21.0 — exports traces, metrics, and logs via OTLP to the Aspire Dashboard
+  - `OpenTelemetry.Instrumentation.AspNetCore` 1.21.0 — automatic tracing for ASP.NET Core request handling
+  - `OpenTelemetry.Instrumentation.Http` 1.21.0 — automatic tracing for outbound `HttpClient` calls
+  - `OpenTelemetry.Instrumentation.Runtime` 1.21.0 — .NET runtime metrics (GC, thread pool, etc.)
 - **Use:** Provides distributed tracing, structured logging, and metrics across `PodSlacker.ApiService` and `PodSlacker.Web`, surfaced in the Aspire Dashboard
 
 ```
@@ -180,7 +180,7 @@ You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2
 ---
 
 ### .NET Aspire Hosting packages
-- **Version:** 13.2.4
+- **Version:** 17.0.0
 - **Author:** Microsoft
 - **License:** MIT
 - **Source:** https://github.com/dotnet/aspire

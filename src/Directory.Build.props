@@ -1,0 +1,13 @@
+<Project>
+
+  <!--
+    Settings shared by every project in the solution. Individual .csproj files
+    only declare what is specific to them (output type, assembly name, etc.).
+  -->
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+</Project>
