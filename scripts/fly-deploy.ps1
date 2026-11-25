@@ -176,9 +176,13 @@ if ($Secrets) {
         Write-Host "  Setting on '$($a.Name)': $($names -join ', ')"
         # --stage: store now, apply on the next deploy. Avoids an extra restart
         # per app, and works before the app has any machines.
-        $stage = if ($Deploy) { @('--stage') } else { @() }
+        # Built as an explicit array: assigning an if-expression unwraps a
+        # one-item array to a string, and splatting a string passes each
+        # character as its own argument.
+        $importArgs = @('secrets', 'import', '--app', $a.Name)
+        if ($Deploy) { $importArgs += '--stage' }
         ($names | ForEach-Object { "$_=$($values[$_])" }) -join "`n" |
-            & fly secrets import --app $a.Name @stage | Out-Null
+            & fly @importArgs | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "fly secrets import failed for '$($a.Name)'." }
     }
 }
