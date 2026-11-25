@@ -1,6 +1,6 @@
 # podslacker (Python)
 
-> **Note:** This is the original Python implementation, preserved for reference. The current .NET 10 implementation lives in the [repository root](../README.md) — it requires no Python, no yt-dlp, and uses Kokoro local TTS by default.
+> **Note:** This is the original Python implementation, preserved for reference. The current .NET 11 implementation lives in the [repository root](../README.md) — it requires no Python, no yt-dlp, and uses Kokoro local TTS by default.
 
 Turn any YouTube video into a podcast. podslacker fetches a video's transcript, uses an LLM to write a markdown summary and a podcast script, then generates an MP3 using text-to-speech — all from the command line.
 

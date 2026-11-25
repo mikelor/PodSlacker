@@ -41,9 +41,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY --from=build /app/publish .
 
-# Kokoro TTS downloads its ~320 MB ONNX model to AppContext.BaseDirectory on
-# first use.  Mount a named volume at /app to persist it across container
-# restarts and avoid re-downloading on every deploy (see docker-compose.yml).
+# Kokoro TTS downloads its ~320 MB ONNX model on first use.  KOKORO_MODEL_DIR
+# keeps it outside /app so a persistent volume can be mounted there without
+# hiding the application binaries (docker-compose.yml and fly.api.toml both
+# mount a volume at /data).
+ENV KOKORO_MODEL_DIR=/data/kokoro
 
 # Listen on HTTP only — TLS termination is handled by the ingress / App Service.
 ENV ASPNETCORE_URLS=http://+:8080
